@@ -1,0 +1,64 @@
+spring:
+  application:
+    name: vertor
+
+  datasource:
+    url: jdbc:postgresql://192.168.141.128:5432/interview_guide
+    username: postgres
+    password: 123456
+    driver-class-name: org.postgresql.Driver
+
+  sql:
+    init:
+      mode: never
+
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+  ai:
+    # Spring AI 模型调用重试策略（作用于 Embedding 等 Spring AI 客户端）
+    retry:
+      max-attempts: 5                # 最大尝试次数（含首次调用）
+      backoff:
+        initial-interval: 2s         # 首次重试间隔
+        multiplier: 5                # 间隔倍数（指数退避：2s -> 10s -> 50s...）
+        max-interval: 3m             # 重试间隔上限
+      on-client-errors: false        # 4xx 客户端错误不重试（参数/认证错误重试无意义）
+      exclude-on-http-codes: [401, 403, 404]  # 显式排除的 HTTP 状态码
+      on-http-codes: [429, 500, 502, 503, 504]  # 触发重试的 HTTP 状态码（限流和瞬时服务端错误）
+    openai:
+      api-key: ${OPENAI_API_KEY:sk-ws-H.PHLYEED.EMx2.MEUCIGyg7k9TeoJFKtUMHuAHRPOpfdsVsv7hV6-H_e5fwzcBAiEAlV8oPNWHYIVIkAr2NdMr3IA5xQu_ehY-eg9p7A3i44g}
+      base-url: ${OPENAI_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode}
+      embedding:
+        options:
+          model: text-embedding-v3
+
+# LangChain4j Embedding 配置（通义千问 OpenAI 兼容端点）
+langchain4j:
+  embedding:
+    base-url: ${LANGCHAIN4J_EMBEDDING_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+    api-key: ${LANGCHAIN4J_EMBEDDING_API_KEY:sk-ws-H.PHLYEED.EMx2.MEUCIGyg7k9TeoJFKtUMHuAHRPOpfdsVsv7hV6-H_e5fwzcBAiEAlV8oPNWHYIVIkAr2NdMr3IA5xQu_ehY-eg9p7A3i44g}
+    model: ${LANGCHAIN4J_EMBEDDING_MODEL:text-embedding-v3}
+    max-retries: ${LANGCHAIN4J_EMBEDDING_MAX_RETRIES:2}  # LangChain4j 内部重试次数（不含首次调用）
+
+# DeepSeek Chat API 配置（用于智能问答总结、聊天机器人 2.0）
+deepseek:
+  api-key: ${DEEPSEEK_API_KEY:sk-f40c74092f2c4a62bff9cc0a6b3f9605}
+  base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+  model: ${DEEPSEEK_MODEL:deepseek-flash}
+  max-retries: ${DEEPSEEK_MAX_RETRIES:2}  # LangChain4j ChatModel 内部重试次数（不含首次调用）
+
+# 向量搜索配置
+vector-search:
+  # 相似度阈值，仅返回相似度 >= 该值的结果（范围 0~1，默认 0.7 即 70%）
+  similarity-threshold: 0.4
+
+server:
+  port: 8081
+
+logging:
+  level:
+    com.vertor: DEBUG
+    org.springframework.ai: DEBUG
