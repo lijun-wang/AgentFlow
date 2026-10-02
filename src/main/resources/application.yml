@@ -1,6 +1,6 @@
 spring:
   application:
-    name: vertor
+    name: agentflow
 
   datasource:
     url: jdbc:postgresql://192.168.141.128:5432/interview_guide
@@ -60,5 +60,5 @@ server:
 
 logging:
   level:
-    com.vertor: DEBUG
+    com.agentflow: DEBUG
     org.springframework.ai: DEBUG

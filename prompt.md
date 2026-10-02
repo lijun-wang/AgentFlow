@@ -1,12 +1,12 @@
-# Vertor 项目复现提示词
+# AgentFlow 项目复现提示词
 
-请使用 AI Coding 工具从零复现一个名为 **Vertor** 的 Java 后端项目。以下是完整的需求描述、技术栈、架构设计和实现细节，请严格按照要求逐步实现。
+请使用 AI Coding 工具从零复现一个名为 **AgentFlow** 的 Java 后端项目。以下是完整的需求描述、技术栈、架构设计和实现细节，请严格按照要求逐步实现。
 
 ---
 
 ## 一、项目概述
 
-Vertor 是一个支持**文件上传与嵌入**的向量搜索服务，同时集成了多种 **LangGraph4j 智能体工作流** Demo。项目核心能力包括：
+AgentFlow 是一个支持**文件上传与嵌入**的向量搜索服务，同时集成了多种 **LangGraph4j 智能体工作流** Demo。项目核心能力包括：
 
 1. **文档管理**：支持 PDF / DOCX / TXT 文件上传，自动分块、向量化存储与语义检索
 2. **智能问答**：基于 RAG（检索增强生成）架构，向量检索 + LLM 总结回答
@@ -42,10 +42,10 @@ Vertor 是一个支持**文件上传与嵌入**的向量搜索服务，同时集
 ## 三、项目结构
 
 ```
-vertor/
+agentflow/
 ├── pom.xml
-├── src/main/java/com/vertor/
-│   ├── VertorApplication.java              # 启动类
+├── src/main/java/com/agentflow/
+│   ├── AgentFlowApplication.java              # 启动类
 │   ├── config/                             # 配置类
 │   │   ├── AgentLoopConfig.java            # Agent Loop 工作流配置
 │   │   ├── ChatbotV2Config.java            # 聊天机器人 2.0 配置
@@ -107,8 +107,8 @@ vertor/
 │   ├── static/index.html                   # 前端页面
 │   ├── application.yml                     # 应用配置
 │   └── schema.sql                          # 数据库初始化脚本
-└── src/test/java/com/vertor/
-    └── VertorApplicationTests.java
+└── src/test/java/com/agentflow/
+    └── AgentFlowApplicationTests.java
 ```
 
 ---
@@ -129,10 +129,10 @@ vertor/
         <relativePath/>
     </parent>
 
-    <groupId>com.vertor</groupId>
-    <artifactId>vertor</artifactId>
+    <groupId>com.agentflow</groupId>
+    <artifactId>agentflow</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>vertor</name>
+    <name>agentflow</name>
     <description>Vector search service with file upload and embedding</description>
 
     <properties>
@@ -306,7 +306,7 @@ vertor/
 ```yaml
 spring:
   application:
-    name: vertor
+    name: agentflow
 
   datasource:
     url: jdbc:postgresql://192.168.141.128:5432/interview_guide
@@ -361,7 +361,7 @@ server:
 
 logging:
   level:
-    com.vertor: DEBUG
+    com.agentflow: DEBUG
     org.springframework.ai: DEBUG
 ```
 

@@ -1,8 +1,8 @@
-# Vertor - 向量检索与智能体工作流演示服务
+# AgentFlow - 向量检索与智能体工作流演示服务
 
 ## 项目简介
 
-Vertor 是一个支持**文件上传与嵌入**的向量搜索服务，同时集成了多种 **LangGraph4j 智能体工作流** Demo，涵盖知识助手、报销审批、圆桌讨论、Plan-and-Execute、Reflection 反思迭代、Subagent 多 Agent 协作、Fan-Out 并发多 Agent、Agent Loop 智能体循环等场景。
+AgentFlow 是一个支持**文件上传与嵌入**的向量搜索服务，同时集成了多种 **LangGraph4j 智能体工作流** Demo，涵盖知识助手、报销审批、圆桌讨论、Plan-and-Execute、Reflection 反思迭代、Subagent 多 Agent 协作、Fan-Out 并发多 Agent、Agent Loop 智能体循环等场景。
 
 核心能力：
 - **文档管理**：支持 PDF / DOCX / TXT 文件上传，自动分块、向量化存储与语义检索
@@ -37,7 +37,7 @@ Vertor 是一个支持**文件上传与嵌入**的向量搜索服务，同时集
 ## 项目结构
 
 ```
-src/main/java/com/vertor/
+src/main/java/com/agentflow/
 ├── config/                     # 配置类
 │   ├── AgentLoopConfig.java        # Agent Loop 工作流配置
 │   ├── ChatbotV2Config.java        # 聊天机器人 2.0 配置
@@ -94,7 +94,7 @@ src/main/java/com/vertor/
 │   ├── HolidayTool.java             # 节假日查询工具
 │   ├── SmartToolProvider.java       # 智能工具提供者（按需动态加载工具）
 │   └── WeatherTool.java             # 天气查询工具
-└── VertorApplication.java      # 启动类
+└── AgentFlowApplication.java      # 启动类
 ```
 
 ---

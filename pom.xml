@@ -11,10 +11,10 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.vertor</groupId>
-    <artifactId>vertor</artifactId>
+    <groupId>com.agentflow</groupId>
+    <artifactId>agentflow</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>vertor</name>
+    <name>agentflow</name>
     <description>Vector search service with file upload and embedding</description>
 
     <properties>
