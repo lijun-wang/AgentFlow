@@ -3,9 +3,9 @@ spring:
     name: agentflow
 
   datasource:
-    url: jdbc:postgresql://192.168.141.128:5432/interview_guide
+    url: ${DB_URL}
     username: postgres
-    password: 123456
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   sql:
@@ -29,7 +29,7 @@ spring:
       exclude-on-http-codes: [401, 403, 404]  # 显式排除的 HTTP 状态码
       on-http-codes: [429, 500, 502, 503, 504]  # 触发重试的 HTTP 状态码（限流和瞬时服务端错误）
     openai:
-      api-key: ${OPENAI_API_KEY:sk-ws-H.PHLYEED.EMx2.MEUCIGyg7k9TeoJFKtUMHuAHRPOpfdsVsv7hV6-H_e5fwzcBAiEAlV8oPNWHYIVIkAr2NdMr3IA5xQu_ehY-eg9p7A3i44g}
+      api-key: ${OPENAI_API_KEY}
       base-url: ${OPENAI_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode}
       embedding:
         options:
@@ -39,13 +39,13 @@ spring:
 langchain4j:
   embedding:
     base-url: ${LANGCHAIN4J_EMBEDDING_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
-    api-key: ${LANGCHAIN4J_EMBEDDING_API_KEY:sk-ws-H.PHLYEED.EMx2.MEUCIGyg7k9TeoJFKtUMHuAHRPOpfdsVsv7hV6-H_e5fwzcBAiEAlV8oPNWHYIVIkAr2NdMr3IA5xQu_ehY-eg9p7A3i44g}
+    api-key: ${LANGCHAIN4J_EMBEDDING_API_KEY}
     model: ${LANGCHAIN4J_EMBEDDING_MODEL:text-embedding-v3}
     max-retries: ${LANGCHAIN4J_EMBEDDING_MAX_RETRIES:2}  # LangChain4j 内部重试次数（不含首次调用）
 
 # DeepSeek Chat API 配置（用于智能问答总结、聊天机器人 2.0）
 deepseek:
-  api-key: ${DEEPSEEK_API_KEY:sk-f40c74092f2c4a62bff9cc0a6b3f9605}
+  api-key: ${DEEPSEEK_API_KEY}
   base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
   model: ${DEEPSEEK_MODEL:deepseek-flash}
   max-retries: ${DEEPSEEK_MAX_RETRIES:2}  # LangChain4j ChatModel 内部重试次数（不含首次调用）
@@ -56,7 +56,7 @@ vector-search:
   similarity-threshold: 0.4
 
 server:
-  port: 8081
+  port: ${SERVER_PORT:8081}
 
 logging:
   level:
