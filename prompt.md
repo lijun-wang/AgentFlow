@@ -12,7 +12,9 @@ AgentFlow 是一个支持**文件上传与嵌入**的向量搜索服务，同时
 2. **智能问答**：基于 RAG（检索增强生成）架构，向量检索 + LLM 总结回答
 3. **聊天机器人**：基于 DeepSeek 模型的多轮对话，支持 SmartToolProvider 动态工具加载与 Tool 工具调用（天气、经纬度、节假日、本地命令行执行）
 4. **智能体工作流**：基于 LangGraph4j 实现多种工作流模式的 Demo 演示（知识助手、报销审批、圆桌讨论、Plan-and-Execute、Reflection 反思迭代、Subagent 多 Agent 协作、Fan-Out 并发多 Agent、Agent Loop 智能体循环）
-5. **前端界面**：内置单页应用（index.html），提供可视化的交互体验
+5. **知识图谱 3.0**：文档上传后自动抽取知识三元组（实体 + 关系），写入知识图谱，支持按文件查询图谱
+6. **向量存储双后端**：通过 `ChunkVectorRepository` 抽象层支持 PostgreSQL(pgvector) 和 Milvus 两种向量存储后端，由配置切换
+7. **前端界面**：内置单页应用（index.html），提供可视化的交互体验
 
 ---
 
@@ -25,7 +27,8 @@ AgentFlow 是一个支持**文件上传与嵌入**的向量搜索服务，同时
 | Spring AI | 1.1.7 | AI 模型集成（OpenAI 嵌入） |
 | LangChain4j | 1.20.0 | AI 应用开发框架（向量化、对话） |
 | LangGraph4j | 1.8.25 | 智能体工作流编排引擎 |
-| PostgreSQL + pgvector | - | 向量数据库存储 |
+| PostgreSQL + pgvector | - | 向量数据库存储（后端之一） |
+| Milvus | 2.6.3（SDK） | 向量数据库存储（后端之二，可选） |
 | DeepSeek | - | 大语言模型（对话、总结、工作流节点） |
 | 通义千问 Qwen | - | Embedding 模型（text-embedding-v3，1024 维） |
 | Spring Retry | - | 外部 API 工具调用的注解式重试支持 |
@@ -55,6 +58,7 @@ agentflow/
 │   │   ├── FanOutConfig.java               # Fan-Out 并发多 Agent 工作流配置
 │   │   ├── LangGraphConfig.java            # LangGraph 知识助手工作流配置
 │   │   ├── Langchain4jConfig.java          # LangChain4j 配置
+│   │   ├── MilvusConfig.java               # Milvus 向量库配置
 │   │   ├── MultiAgentConfig.java           # Multi Agent 圆桌讨论配置
 │   │   ├── PlanExecuteConfig.java          # Plan-and-Execute 工作流配置
 │   │   ├── ReflectionConfig.java           # Reflection 反思迭代配置
@@ -68,6 +72,7 @@ agentflow/
 │   │   ├── ChatbotV2Controller.java
 │   │   ├── DocumentController.java
 │   │   ├── DocumentV2Controller.java
+│   │   ├── DocumentV3Controller.java       # 知识图谱 3.0 控制器
 │   │   ├── FanOutController.java
 │   │   ├── LangGraphController.java
 │   │   ├── MultiAgentController.java
@@ -77,19 +82,29 @@ agentflow/
 │   │   └── SubagentController.java
 │   ├── model/                              # 数据模型
 │   │   ├── ChatbotMessage.java
-│   │   └── DocumentChunk.java
+│   │   ├── DocumentChunk.java
+│   │   ├── ExtractedTriple.java            # LLM 抽取的知识三元组
+│   │   ├── KgEntity.java                   # 知识图谱实体
+│   │   └── KgRelation.java                 # 知识图谱关系
 │   ├── service/                            # 服务层
 │   │   ├── AgentLoopService.java
 │   │   ├── ChatService.java
 │   │   ├── ChatbotService.java
 │   │   ├── ChatbotV2Assistant.java         # AiService 接口（动态代理）
 │   │   ├── ChatbotV2Service.java
+│   │   ├── ChunkVectorRepository.java      # 向量仓储抽象（Postgres/Milvus）
 │   │   ├── EmbeddingService.java
+│   │   ├── EntityResolutionService.java    # 实体对齐与规范化
 │   │   ├── FanOutService.java
+│   │   ├── KnowledgeExtractionService.java # LLM 三元组抽取与校验
+│   │   ├── KnowledgeGraphIngestService.java # 知识图谱导入编排
+│   │   ├── KnowledgeGraphStore.java        # 知识图谱 JDBC 读写
 │   │   ├── LangGraphService.java
 │   │   ├── Langchain4jVectorStoreService.java
+│   │   ├── MilvusChunkVectorRepository.java  # Milvus 向量仓储实现
 │   │   ├── MultiAgentService.java
 │   │   ├── PlanExecuteService.java
+│   │   ├── PostgresChunkVectorRepository.java # PostgreSQL 向量仓储实现
 │   │   ├── ReflectionService.java
 │   │   ├── ReimbursementService.java
 │   │   ├── SubagentService.java
@@ -107,6 +122,8 @@ agentflow/
 │   ├── static/index.html                   # 前端页面
 │   ├── application.yml                     # 应用配置
 │   └── schema.sql                          # 数据库初始化脚本
+├── samples/
+│   └── knowledge-graph-demo.txt            # 知识图谱测试样例文档
 └── src/test/java/com/agentflow/
     └── AgentFlowApplicationTests.java
 ```
@@ -137,11 +154,13 @@ agentflow/
 
     <properties>
         <java.version>17</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-ai.version>1.1.7</spring-ai.version>
         <pdfbox.version>3.0.3</pdfbox.version>
         <poi.version>5.3.0</poi.version>
         <langchain4j.version>1.20.0</langchain4j.version>
         <langgraph4j.version>1.8.25</langgraph4j.version>
+        <milvus.sdk.version>2.6.3</milvus.sdk.version>
     </properties>
 
     <dependencies>
@@ -220,6 +239,13 @@ agentflow/
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-pgvector</artifactId>
+        </dependency>
+
+        <!-- Milvus Java SDK（向量库，与 vector-store.type=milvus 配合使用） -->
+        <dependency>
+            <groupId>io.milvus</groupId>
+            <artifactId>milvus-sdk-java</artifactId>
+            <version>${milvus.sdk.version}</version>
         </dependency>
 
         <!-- LangGraph4j Core -->
@@ -356,6 +382,27 @@ deepseek:
 vector-search:
   similarity-threshold: 0.4
 
+# 向量存储后端开关：postgres（pgvector）或 milvus
+vector-store:
+  type: ${VECTOR_STORE_TYPE:postgres}   # postgres | milvus
+  milvus:
+    uri: ${MILVUS_URI:http://localhost:19530}
+    token: ${MILVUS_TOKEN:}
+    username: ${MILVUS_USERNAME:root}
+    password: ${MILVUS_PASSWORD:123456}
+    database: ${MILVUS_DATABASE:default}
+    dimension: ${MILVUS_DIMENSION:1024}
+    collection-document-chunk: document_chunk
+    collection-langchain4j: document_chunk_langchain4j
+    collection-v3: document_chunk_v3
+
+# 知识图谱 3.0：按块抽取三元组
+knowledge-graph:
+  confidence-threshold: 0.6
+  require-mention-in-chunk: true
+  allowed-types: Person,Org,Concept,Location,Event,Product
+  allowed-predicates: 属于,包含,依赖,导致,位于,参与,相关,任职于
+
 server:
   port: 8081
 
@@ -416,6 +463,70 @@ COMMENT ON COLUMN document_chunk_langchain4j.created_at IS '记录创建时间';
 
 CREATE INDEX IF NOT EXISTS idx_document_chunk_langchain4j_embedding
     ON document_chunk_langchain4j USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+
+-- Create document_chunk_v3 table (知识图谱 3.0 分块溯源)
+CREATE TABLE IF NOT EXISTS document_chunk_v3 (
+    id BIGSERIAL PRIMARY KEY,
+    file_name VARCHAR(255) NOT NULL,
+    chunk_index INTEGER NOT NULL,
+    chunk_text TEXT NOT NULL,
+    embedding vector(1024),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE document_chunk_v3 IS '文档分块表（知识图谱 3.0），存储上传文档分块文本、向量，并作为图谱关系溯源';
+COMMENT ON COLUMN document_chunk_v3.id IS '主键ID，自增';
+COMMENT ON COLUMN document_chunk_v3.file_name IS '上传的文件名';
+COMMENT ON COLUMN document_chunk_v3.chunk_index IS '分块在文档中的序号（从0开始）';
+COMMENT ON COLUMN document_chunk_v3.chunk_text IS '分块的文本内容';
+COMMENT ON COLUMN document_chunk_v3.embedding IS '嵌入向量（1024维）';
+COMMENT ON COLUMN document_chunk_v3.created_at IS '记录创建时间';
+
+CREATE INDEX IF NOT EXISTS idx_document_chunk_v3_embedding
+    ON document_chunk_v3 USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+CREATE INDEX IF NOT EXISTS idx_document_chunk_v3_file_name
+    ON document_chunk_v3 (file_name);
+
+-- 知识图谱实体
+CREATE TABLE IF NOT EXISTS kg_entity (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(512) NOT NULL,
+    canonical_name VARCHAR(512) NOT NULL,
+    type VARCHAR(64) NOT NULL,
+    aliases TEXT,
+    embedding vector(1024),
+    extra JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_kg_entity_canonical_type UNIQUE (canonical_name, type)
+);
+
+COMMENT ON TABLE kg_entity IS '知识图谱实体表';
+COMMENT ON COLUMN kg_entity.name IS '实体展示名称';
+COMMENT ON COLUMN kg_entity.canonical_name IS '规范化名称，用于跨文档对齐';
+COMMENT ON COLUMN kg_entity.type IS '实体类型：Person/Org/Concept/Location/Event/Product/Document/DocSection';
+
+-- 知识图谱关系
+CREATE TABLE IF NOT EXISTS kg_relation (
+    id BIGSERIAL PRIMARY KEY,
+    from_entity_id BIGINT NOT NULL REFERENCES kg_entity(id),
+    predicate VARCHAR(64) NOT NULL,
+    to_entity_id BIGINT NOT NULL REFERENCES kg_entity(id),
+    confidence DOUBLE PRECISION,
+    chunk_id BIGINT REFERENCES document_chunk_v3(id),
+    file_name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_kg_relation_edge UNIQUE (from_entity_id, predicate, to_entity_id, chunk_id)
+);
+
+COMMENT ON TABLE kg_relation IS '知识图谱关系表（主谓宾三元组，带分块溯源）';
+COMMENT ON COLUMN kg_relation.predicate IS '关系谓词（受控词表）';
+COMMENT ON COLUMN kg_relation.confidence IS '抽取置信度 0~1';
+COMMENT ON COLUMN kg_relation.chunk_id IS '来源分块 ID';
+COMMENT ON COLUMN kg_relation.file_name IS '来源文件名';
+
+CREATE INDEX IF NOT EXISTS idx_kg_relation_file_name ON kg_relation (file_name);
+CREATE INDEX IF NOT EXISTS idx_kg_relation_from ON kg_relation (from_entity_id);
+CREATE INDEX IF NOT EXISTS idx_kg_relation_to ON kg_relation (to_entity_id);
 ```
 
 ### 6.2 关键设计要点
@@ -424,6 +535,7 @@ CREATE INDEX IF NOT EXISTS idx_document_chunk_langchain4j_embedding
 - 索引类型：IVFFlat 余弦距离索引（`vector_cosine_ops`）
 - 相似度计算：`embedding <=> CAST(? AS vector)` 计算余弦距离，`1 - cosine_distance` 得到相似度
 - **关键陷阱**：必须使用 `CAST(? AS vector)` 显式转换类型，否则 JDBC 会将 String 参数绑定为 `character varying`，pgvector 的 `<=>` 操作符不支持隐式转换
+- **知识图谱表**：`kg_entity` 使用 `(canonical_name, type)` 唯一约束实现 upsert；`kg_relation` 使用 `(from_entity_id, predicate, to_entity_id, chunk_id)` 唯一约束去重
 
 ---
 
@@ -522,6 +634,56 @@ CREATE INDEX IF NOT EXISTS idx_document_chunk_langchain4j_embedding
 - `ChatRequest` 用于传入工具规格（`toolSpecifications`）
 - `AiMessage.toolExecutionRequests()` 获取工具调用请求列表
 
+### 7.10 向量存储双后端架构（ChunkVectorRepository）
+
+项目通过 `ChunkVectorRepository` 接口抽象向量存储操作，支持 PostgreSQL(pgvector) 和 Milvus 两种后端：
+
+**接口定义**：
+- `saveChunks(storeName, fileName, texts, embeddings)`：批量保存分块与向量
+- `search(storeName, queryEmbedding, topK)`：向量相似度搜索
+
+**实现类**：
+- `PostgresChunkVectorRepository`：当 `vector-store.type=postgres`（默认）且 `database.available=true` 时注册，使用 `JdbcTemplate` + `CAST(? AS vector)`
+- `MilvusChunkVectorRepository`：当 `vector-store.type=milvus` 时注册，使用 `MilvusClientV2` 操作 Collection
+
+**服务层委托**：
+- `VectorStoreService` 和 `Langchain4jVectorStoreService` 均委托 `ChunkVectorRepository` 实现存储与检索
+- 通过 `@ConditionalOnBean(ChunkVectorRepository.class)` 确保后端可用时才注册服务
+
+**Milvus 配置**：
+- `MilvusConfig` 在 `vector-store.type=milvus` 时初始化 `MilvusClientV2` 并自动创建三个 Collection（document_chunk、document_chunk_langchain4j、document_chunk_v3）
+- Collection 字段：id(Int64 PK)、file_name(VarChar)、chunk_index(Int32)、chunk_text(VarChar)、embedding(FloatVector)、created_at(Int64)
+- 索引类型：COSINE 度量
+
+### 7.11 知识图谱 3.0
+
+文档上传后自动抽取知识三元组，构建知识图谱：
+
+**导入流程（KnowledgeGraphIngestService）**：
+1. 文本提取与分块（复用 TextExtractionService）
+2. 分块向量化写入 `document_chunk_v3`（通过 EmbeddingService + KnowledgeGraphStore）
+3. 创建 Document 实体和 DocSection 实体，写入结构边（包含、下一节）
+4. 按块调用 DeepSeek 抽取三元组（KnowledgeExtractionService）
+5. 校验三元组（实体类型受控词表、谓词受控词表、置信度阈值、原文提及检查）
+6. 实体对齐与 upsert（EntityResolutionService + KnowledgeGraphStore）
+7. 写入关系边，并添加“提及”边连接章节与实体
+
+**抽取校验规则（KnowledgeExtractionService）**：
+- 实体类型必须在 `knowledge-graph.allowed-types` 内
+- 谓词必须在 `knowledge-graph.allowed-predicates` 内
+- 置信度必须 >= `knowledge-graph.confidence-threshold`
+- 实体名必须在原文分块中出现（可配置 `knowledge-graph.require-mention-in-chunk`）
+
+**实体对齐（EntityResolutionService）**：
+- 一期仅做名称规范化（去首尾空白、压缩连续空白）
+- 精确匹配交给数据库 `(canonical_name, type)` 唯一约束
+
+**知识图谱存储（KnowledgeGraphStore）**：
+- 分块保存使用 `RETURNING id` 获取生成的主键，用于后续关系边关联
+- 实体 upsert 使用 `ON CONFLICT (canonical_name, type) DO UPDATE` 实现幂等
+- 关系写入使用 `ON CONFLICT (from_entity_id, predicate, to_entity_id, chunk_id) DO NOTHING` 去重
+- 图谱查询按文件名返回触及的实体列表与全部关系三元组
+
 ---
 
 ## 八、API 接口设计
@@ -567,6 +729,13 @@ CREATE INDEX IF NOT EXISTS idx_document_chunk_langchain4j_embedding
 | POST | `/api/agentloop/process` | Agent Loop 智能体循环 |
 | POST | `/api/fanout/process` | Fan-Out 并发多 Agent |
 
+### 8.6 文档管理 V3（知识图谱）- `/api/documents/v3`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/documents/v3/upload` | 上传文档并构建知识图谱（抽取三元组） |
+| GET | `/api/documents/v3/graph` | 按文件名查询知识图谱（实体 + 关系） |
+
 ---
 
 ## 九、数据模型
@@ -595,6 +764,48 @@ public class ChatbotMessage {
 }
 ```
 
+### 9.3 ExtractedTriple
+
+```java
+public class ExtractedTriple {
+    private String subject;        // 主语实体名称
+    private String subjectType;    // 主语实体类型
+    private String predicate;      // 关系谓词
+    private String object;         // 宾语实体名称
+    private String objectType;     // 宾语实体类型
+    private Double confidence;     // 抽取置信度 0~1
+}
+```
+
+### 9.4 KgEntity
+
+```java
+public class KgEntity {
+    private Long id;
+    private String name;           // 实体展示名称
+    private String canonicalName;  // 规范化名称
+    private String type;           // Person/Org/Concept/Location/Event/Product/Document/DocSection
+}
+```
+
+### 9.5 KgRelation
+
+```java
+public class KgRelation {
+    private Long id;
+    private Long fromEntityId;
+    private String fromName;       // 查询展示用，非表字段
+    private String fromType;       // 查询展示用，非表字段
+    private String predicate;
+    private Long toEntityId;
+    private String toName;         // 查询展示用，非表字段
+    private String toType;         // 查询展示用，非表字段
+    private Double confidence;
+    private Long chunkId;
+    private String fileName;
+}
+```
+
 ---
 
 ## 十、实现步骤建议
@@ -603,14 +814,16 @@ public class ChatbotMessage {
 2. **数据库层**：编写 schema.sql，实现 DatabaseAvailabilityEnvironmentPostProcessor 和 DatabaseConfig
 3. **Embedding 服务**：分别实现 Spring AI 和 LangChain4j 两套 Embedding 体系
 4. **文本提取**：实现 TextExtractionService（支持 PDF/DOCX/TXT，按标题分块）
-5. **向量存储**：实现 VectorStoreService 和 Langchain4jVectorStoreService（注意 CAST(? AS vector)）
-6. **文档管理接口**：实现 DocumentController 和 DocumentV2Controller
-7. **聊天机器人**：实现 ChatbotV2Config（AiService + SmartToolProvider）
-8. **工具类**：实现 WeatherTool、GeocodingTool、HolidayTool、CommandLineTool、ExternalApiFetcher
-9. **LangGraph4j 工作流**：逐个实现 8 个工作流配置和对应的 Service/Controller
-10. **前端页面**：实现 index.html 单页应用
-11. **RestClient 配置**：处理 application/octet-stream 兼容问题
-12. **重试机制**：配置 RetryConfig 和 ExternalApiFetcher 的 @Retryable
+5. **向量存储抽象层**：实现 ChunkVectorRepository 接口及其 Postgres/Milvus 两个实现类
+6. **文档管理接口**：实现 DocumentController 和 DocumentV2Controller（通过 VectorStoreService/Langchain4jVectorStoreService 委托仓储层）
+7. **Milvus 集成**（可选）：实现 MilvusConfig、MilvusChunkVectorRepository
+8. **聊天机器人**：实现 ChatbotV2Config（AiService + SmartToolProvider）
+9. **工具类**：实现 WeatherTool、GeocodingTool、HolidayTool、CommandLineTool、ExternalApiFetcher
+10. **LangGraph4j 工作流**：逐个实现 8 个工作流配置和对应的 Service/Controller
+11. **知识图谱 3.0**：实现 KnowledgeExtractionService、KnowledgeGraphIngestService、KnowledgeGraphStore、EntityResolutionService、DocumentV3Controller
+12. **前端页面**：实现 index.html 单页应用
+13. **RestClient 配置**：处理 application/octet-stream 兼容问题
+14. **重试机制**：配置 RetryConfig 和 ExternalApiFetcher 的 @Retryable
 
 ---
 
@@ -626,6 +839,8 @@ public class ChatbotMessage {
 8. **向量维度一致性**：Embedding 模型输出维度（1024）必须与数据库 `vector(1024)` 字段一致
 9. **RowMapper 显式映射**：必须显式映射 `cosine_distance` 和 `similarity` 字段
 10. **LLM 改写输出兜底**：查询改写结果需要程序化兜底截断，防止异常输出
+11. **知识图谱 upsert 幂等**：`kg_entity` 使用 `(canonical_name, type)` 唯一约束，`kg_relation` 使用 `(from_entity_id, predicate, to_entity_id, chunk_id)` 唯一约束，重复导入不会产生重复数据
+12. **ChunkVectorRepository 条件注册**：Postgres 实现需要 `vector-store.type=postgres` 且 `database.available=true`；Milvus 实现需要 `vector-store.type=milvus`，服务层通过 `@ConditionalOnBean` 依赖仓储层
 
 ---
 

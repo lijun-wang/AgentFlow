@@ -1,13 +1,15 @@
-# AgentFlow - 向量检索与智能体工作流演示服务
+# AgentFlow - 向量检索、知识图谱与智能体工作流演示服务
 
 ## 项目简介
 
-AgentFlow 是一个支持**文件上传与嵌入**的向量搜索服务，同时集成了多种 **LangGraph4j 智能体工作流** Demo，涵盖知识助手、报销审批、圆桌讨论、Plan-and-Execute、Reflection 反思迭代、Subagent 多 Agent 协作、Fan-Out 并发多 Agent、Agent Loop 智能体循环等场景。
+AgentFlow 是一个支持**文件上传与嵌入**的向量搜索服务，同时集成了**知识图谱 3.0** 和多种 **LangGraph4j 智能体工作流** Demo，涵盖知识助手、报销审批、圆桌讨论、Plan-and-Execute、Reflection 反思迭代、Subagent 多 Agent 协作、Fan-Out 并发多 Agent、Agent Loop 智能体循环等场景。
 
 核心能力：
 - **文档管理**：支持 PDF / DOCX / TXT 文件上传，自动分块、向量化存储与语义检索
 - **智能问答**：基于 RAG（检索增强生成）架构，向量检索 + LLM 总结回答
 - **聊天机器人**：基于 DeepSeek 模型的多轮对话，支持 SmartToolProvider 动态工具加载与 Tool 工具调用（天气、经纬度、节假日、本地命令行执行）
+- **知识图谱 3.0**：文档上传后自动抽取知识三元组（实体 + 关系），写入知识图谱，支持按文件查询图谱
+- **向量存储双后端**：通过 `ChunkVectorRepository` 抽象层支持 PostgreSQL(pgvector) 和 Milvus 两种向量存储后端，由配置切换
 - **智能体工作流**：基于 LangGraph4j 实现多种工作流模式的 Demo 演示
 - **前端界面**：内置单页应用（index.html），提供可视化的交互体验
 
@@ -22,7 +24,8 @@ AgentFlow 是一个支持**文件上传与嵌入**的向量搜索服务，同时
 | Spring AI | 1.1.7  | AI 模型集成（OpenAI 嵌入） |
 | LangChain4j | 1.20.0 | AI 应用开发框架（向量化、对话） |
 | LangGraph4j | 1.8.25 | 智能体工作流编排引擎 |
-| PostgreSQL + pgvector | -      | 向量数据库存储 |
+| PostgreSQL + pgvector | -      | 向量数据库存储（后端之一） |
+| Milvus | 2.6.3（SDK） | 向量数据库存储（后端之二，可选） |
 | DeepSeek | -      | 大语言模型（对话、总结、工作流节点） |
 | 通义千问 Qwen | -      | Embedding 模型（text-embedding-v3，1024 维） |
 | Spring Retry | -      | 外部 API 工具调用的注解式重试支持 |
@@ -47,6 +50,7 @@ src/main/java/com/agentflow/
 │   ├── FanOutConfig.java            # Fan-Out 并发多 Agent 工作流配置
 │   ├── LangGraphConfig.java         # LangGraph 知识助手工作流配置
 │   ├── Langchain4jConfig.java       # LangChain4j 配置
+│   ├── MilvusConfig.java            # Milvus 向量库配置
 │   ├── MultiAgentConfig.java        # Multi Agent 圆桌讨论配置
 │   ├── PlanExecuteConfig.java       # Plan-and-Execute 工作流配置
 │   ├── ReflectionConfig.java        # Reflection 反思迭代配置
@@ -60,6 +64,7 @@ src/main/java/com/agentflow/
 │   ├── ChatbotV2Controller.java     # 聊天机器人 2.0 接口
 │   ├── DocumentController.java      # 文档管理接口（Spring AI）
 │   ├── DocumentV2Controller.java    # 文档管理 V2 接口（LangChain4j）
+│   ├── DocumentV3Controller.java    # 文档管理 V3 接口（知识图谱）
 │   ├── FanOutController.java        # Fan-Out 并发多 Agent 接口
 │   ├── LangGraphController.java     # LangGraph 知识助手接口
 │   ├── MultiAgentController.java    # Multi Agent 圆桌讨论接口
@@ -69,19 +74,29 @@ src/main/java/com/agentflow/
 │   └── SubagentController.java      # Subagent 多 Agent 协作接口
 ├── model/                      # 数据模型
 │   ├── ChatbotMessage.java          # 聊天消息模型
-│   └── DocumentChunk.java           # 文档分块模型
+│   ├── DocumentChunk.java           # 文档分块模型
+│   ├── ExtractedTriple.java         # LLM 抽取的知识三元组
+│   ├── KgEntity.java                # 知识图谱实体
+│   └── KgRelation.java              # 知识图谱关系
 ├── service/                    # 服务层
 │   ├── AgentLoopService.java        # Agent Loop 服务
-│   ├── ChatService.java             # 对话总结服务
+│   ├── ChatService.java             # 对话总结与三元组抽取服务
 │   ├── ChatbotService.java          # 聊天机器人服务
 │   ├── ChatbotV2Assistant.java      # 聊天机器人 2.0 助手
 │   ├── ChatbotV2Service.java        # 聊天机器人 2.0 服务
+│   ├── ChunkVectorRepository.java   # 向量仓储抽象（Postgres/Milvus）
 │   ├── EmbeddingService.java        # 嵌入向量服务（Spring AI）
+│   ├── EntityResolutionService.java # 实体对齐与规范化
 │   ├── FanOutService.java           # Fan-Out 并发多 Agent 服务
+│   ├── KnowledgeExtractionService.java  # LLM 三元组抽取与校验
+│   ├── KnowledgeGraphIngestService.java # 知识图谱导入编排
+│   ├── KnowledgeGraphStore.java     # 知识图谱 JDBC 读写
 │   ├── LangGraphService.java        # LangGraph 工作流服务
 │   ├── Langchain4jVectorStoreService.java  # LangChain4j 向量存储服务
+│   ├── MilvusChunkVectorRepository.java  # Milvus 向量仓储实现
 │   ├── MultiAgentService.java       # Multi Agent 服务
 │   ├── PlanExecuteService.java      # Plan-and-Execute 服务
+│   ├── PostgresChunkVectorRepository.java # PostgreSQL 向量仓储实现
 │   ├── ReflectionService.java       # Reflection 服务
 │   ├── ReimbursementService.java    # 报销流程服务
 │   ├── SubagentService.java         # Subagent 服务
@@ -116,6 +131,8 @@ src/main/java/com/agentflow/
 - `kg_entity` / `kg_relation`：知识图谱实体与关系表
 
 前两张表结构相同，均包含 1024 维向量字段，并建立 IVFFlat 余弦距离索引。
+
+> 当使用 Milvus 作为向量存储后端时（`vector-store.type=milvus`），Milvus 会自动创建对应的 Collection，无需手动执行 schema.sql 中的向量表部分。但 `kg_entity` 和 `kg_relation` 表仍需在 PostgreSQL 中创建。
 
 ---
 
@@ -712,37 +729,6 @@ src/main/java/com/agentflow/
       "output": "调研分析结果",
       "status": "completed",
       "isConcurrent": true
-    },
-    {
-      "step": "agent_创意策划",
-      "label": "创意策划",
-      "icon": "💡",
-      "output": "创意策划结果",
-      "status": "completed",
-      "isConcurrent": true
-    },
-    {
-      "step": "agent_技术顾问",
-      "label": "技术顾问",
-      "icon": "⚙️",
-      "output": "技术分析结果",
-      "status": "completed",
-      "isConcurrent": true
-    },
-    {
-      "step": "agent_执行专家",
-      "label": "执行专家",
-      "icon": "🎯",
-      "output": "执行方案结果",
-      "status": "completed",
-      "isConcurrent": true
-    },
-    {
-      "step": "aggregator",
-      "label": "归总汇总",
-      "icon": "📊",
-      "output": "最终归总报告",
-      "status": "completed"
     }
   ],
   "agentCount": 4,
@@ -771,11 +757,48 @@ src/main/java/com/agentflow/
 
 表结构与 `document_chunk` 相同，专用于 LangChain4j 的分块和向量化存储。
 
-### document_chunk_v3 / kg_entity / kg_relation（知识图谱 3.0）
+### document_chunk_v3 表（知识图谱 3.0 分块溯源）
 
-- `document_chunk_v3`：表结构与 `document_chunk` 相同，作为图谱关系的分块溯源
-- `kg_entity`：实体（name、canonical_name、type），`(canonical_name, type)` 唯一
-- `kg_relation`：三元组边，带 `predicate`、`confidence`、`chunk_id`、`file_name`
+表结构与 `document_chunk` 相同，作为图谱关系的分块溯源，额外包含 `file_name` 索引。
+
+### kg_entity 表（知识图谱实体）
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGSERIAL | 主键 ID，自增 |
+| name | VARCHAR(512) | 实体展示名称 |
+| canonical_name | VARCHAR(512) | 规范化名称，用于跨文档对齐 |
+| type | VARCHAR(64) | 实体类型：Person/Org/Concept/Location/Event/Product/Document/DocSection |
+| aliases | TEXT | 别名（预留） |
+| embedding | vector(1024) | 实体嵌入向量（预留） |
+| extra | JSONB | 扩展信息（预留） |
+| created_at | TIMESTAMP | 记录创建时间 |
+
+唯一约束：`(canonical_name, type)`
+
+### kg_relation 表（知识图谱关系）
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGSERIAL | 主键 ID，自增 |
+| from_entity_id | BIGINT | 起始实体 ID（外键关联 kg_entity） |
+| predicate | VARCHAR(64) | 关系谓词（受控词表） |
+| to_entity_id | BIGINT | 目标实体 ID（外键关联 kg_entity） |
+| confidence | DOUBLE PRECISION | 抽取置信度 0~1 |
+| chunk_id | BIGINT | 来源分块 ID（外键关联 document_chunk_v3） |
+| file_name | VARCHAR(255) | 来源文件名 |
+| created_at | TIMESTAMP | 记录创建时间 |
+
+唯一约束：`(from_entity_id, predicate, to_entity_id, chunk_id)`
+
+### Milvus Collection（可选）
+
+当 `vector-store.type=milvus` 时，`MilvusConfig` 会自动创建以下 Collection：
+- `document_chunk`：对应 Spring AI 向量存储
+- `document_chunk_langchain4j`：对应 LangChain4j 向量存储
+- `document_chunk_v3`：对应知识图谱分块溯源
+
+每个 Collection 字段：id(Int64 PK, autoID)、file_name(VarChar)、chunk_index(Int32)、chunk_text(VarChar)、embedding(FloatVector, 1024维)、created_at(Int64)。索引类型：COSINE 度量。
 
 ---
 
@@ -792,11 +815,33 @@ src/main/java/com/agentflow/
 | `deepseek.model` | DeepSeek 聊天模型 | deepseek-flash |
 | `deepseek.max-retries` | LangChain4j ChatModel 内部重试次数 | 2 |
 | `vector-search.similarity-threshold` | 向量搜索相似度阈值 | 0.4 |
+| `vector-store.type` | 向量存储后端（postgres / milvus） | postgres |
+| `vector-store.milvus.uri` | Milvus 连接地址 | http://localhost:19530 |
+| `vector-store.milvus.dimension` | Milvus 向量维度 | 1024 |
+| `knowledge-graph.confidence-threshold` | 知识图谱三元组抽取置信度阈值 | 0.6 |
+| `knowledge-graph.allowed-types` | 允许的实体类型（逗号分隔） | Person,Org,Concept,Location,Event,Product |
+| `knowledge-graph.allowed-predicates` | 允许的关系谓词（逗号分隔） | 属于,包含,依赖,导致,位于,参与,相关,任职于 |
 | `spring.servlet.multipart.max-file-size` | 上传文件大小限制 | 50MB |
 | `spring.ai.retry.max-attempts` | Spring AI 模型调用最大尝试次数 | 5 |
 | `holiday.api.base-url` | 节假日 API 基础地址 | https://timor.tech |
 
-所有敏感配置均支持通过环境变量覆盖（如 `DEEPSEEK_API_KEY`、`OPENAI_API_KEY`、`LANGCHAIN4J_EMBEDDING_API_KEY` 等）。
+所有敏感配置均支持通过环境变量覆盖（如 `DEEPSEEK_API_KEY`、`OPENAI_API_KEY`、`LANGCHAIN4J_EMBEDDING_API_KEY`、`MILVUS_URI`、`MILVUS_TOKEN` 等）。
+
+### 向量存储后端切换
+
+默认使用 PostgreSQL(pgvector) 作为向量存储后端。切换为 Milvus：
+
+```bash
+# 设置环境变量
+export VECTOR_STORE_TYPE=milvus
+export MILVUS_URI=http://your-milvus-host:19530
+export MILVUS_USERNAME=root
+export MILVUS_PASSWORD=your-password
+
+# 或在 application.yml 中修改
+vector-store:
+  type: milvus
+```
 
 ---
 
