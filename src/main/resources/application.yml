@@ -55,8 +55,30 @@ vector-search:
   # 相似度阈值，仅返回相似度 >= 该值的结果（范围 0~1，默认 0.7 即 70%）
   similarity-threshold: 0.4
 
+# 向量存储后端开关：postgres（pgvector）或 milvus
+vector-store:
+  type: ${VECTOR_STORE_TYPE:milvus}   # postgres | milvus
+  milvus:
+    uri: ${MILVUS_URI:}
+    token: ${MILVUS_TOKEN:}              # 可选，格式 username:password；为空则用 username/password
+    username: ${MILVUS_USERNAME:}
+    password: ${MILVUS_PASSWORD:}
+    database: ${MILVUS_DATABASE:}
+    dimension: ${MILVUS_DIMENSION:}
+    # 与 Postgres 表名对应的 Collection
+    collection-document-chunk: document_chunk
+    collection-langchain4j: document_chunk_langchain4j
+    collection-v3: document_chunk_v3
+
+# 知识图谱 3.0：按块抽取三元组
+knowledge-graph:
+  confidence-threshold: 0.6
+  require-mention-in-chunk: true
+  allowed-types: Person,Org,Concept,Location,Event,Product
+  allowed-predicates: 属于,包含,依赖,导致,位于,参与,相关,任职于
+
 server:
-  port: ${SERVER_PORT:8081}
+  port: 8081
 
 logging:
   level:

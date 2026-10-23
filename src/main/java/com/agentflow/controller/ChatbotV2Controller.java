@@ -14,9 +14,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 聊天机器�?2.0 控制器：基于 langchain4j + DeepSeek 模型提供对话接口
+ * 聊天机器人 2.0 控制器：基于 langchain4j + DeepSeek 模型提供对话接口
  */
-@Tag(name = "聊天机器�?2.0", description = "基于 langchain4j + DeepSeek 模型的对话接�?)
+@Tag(name = "聊天机器人 2.0", description = "基于 langchain4j + DeepSeek 模型的对话接口")
 @RestController
 @RequestMapping("/api/chatbot/v2")
 public class ChatbotV2Controller {
@@ -33,8 +33,8 @@ public class ChatbotV2Controller {
      * 发送消息并获取回复
      */
     @Operation(
-            summary = "发送聊天消息（2.0�?,
-            description = "基于 langchain4j + DeepSeek 模型，发送用户消息并返回机器人回复，支持多轮对话�?
+            summary = "发送聊天消息（2.0）",
+            description = "基于 langchain4j + DeepSeek 模型，发送用户消息并返回机器人回复，支持多轮对话。"
     )
     @PostMapping("/send")
     public ResponseEntity<Map<String, Object>> send(@RequestBody Map<String, Object> request) {
@@ -47,7 +47,7 @@ public class ChatbotV2Controller {
                 ));
             }
 
-            log.info("聊天机器�?2.0 收到消息: {}", userMessage);
+            log.info("聊天机器人 2.0 收到消息: {}", userMessage);
 
             // 解析对话历史
             List<Map<String, String>> historyRaw = (List<Map<String, String>>) request.get("history");
@@ -71,7 +71,7 @@ public class ChatbotV2Controller {
             ));
 
         } catch (Exception e) {
-            log.error("聊天机器�?2.0 处理失败", e);
+            log.error("聊天机器人 2.0 处理失败", e);
             return ResponseEntity.internalServerError().body(Map.of(
                     "success", false,
                     "message", "处理失败: " + e.getMessage()

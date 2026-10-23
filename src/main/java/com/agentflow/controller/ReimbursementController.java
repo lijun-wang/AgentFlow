@@ -13,7 +13,8 @@ import java.util.Map;
 /**
  * LangGraph4j 报销流程控制器：提供基于状态图工作流的报销审批接口
  *
- * 通过 POST /api/reimbursement/process 接收报销申请�? * 驱动 LangGraph4j 报销工作流（提交申请 �?部门审批 �?财务审核 �?完成报销）执行并返回结果
+ * 通过 POST /api/reimbursement/process 接收报销申请，
+ * 驱动 LangGraph4j 报销工作流（提交申请 → 部门审批 → 财务审核 → 完成报销）执行并返回结果
  */
 @Tag(name = "LangGraph4j 报销流程", description = "基于 LangGraph4j 状态图工作流的报销审批 Demo 接口")
 @RestController
@@ -29,10 +30,11 @@ public class ReimbursementController {
     }
 
     /**
-     * 提交报销申请�?LangGraph4j 报销工作流进行处�?     */
+     * 提交报销申请到 LangGraph4j 报销工作流进行处理
+     */
     @Operation(
             summary = "提交报销申请",
-            description = "基于 LangGraph4j 状态图工作流，依次执行提交申请、部门审批、财务审核、完成报销四个节点，返回最终结果及各步骤中间结果。审批节点可能被 LLM 判定为驳回，此时流程提前终止�?
+            description = "基于 LangGraph4j 状态图工作流，依次执行提交申请、部门审批、财务审核、完成报销四个节点，返回最终结果及各步骤中间结果。审批节点可能被 LLM 判定为驳回，此时流程提前终止。"
     )
     @PostMapping("/process")
     public ResponseEntity<Map<String, Object>> process(@RequestBody Map<String, String> request) {
@@ -45,13 +47,13 @@ public class ReimbursementController {
                 ));
             }
 
-            log.info("报销流程工作流收到申�? {}", reimbursementRequest);
+            log.info("报销流程工作流收到申请: {}", reimbursementRequest);
 
             Map<String, Object> result = reimbursementService.process(reimbursementRequest);
             return ResponseEntity.ok(result);
 
         } catch (Exception e) {
-            log.error("报销流程工作流处理失�?, e);
+            log.error("报销流程工作流处理失败", e);
             return ResponseEntity.internalServerError().body(Map.of(
                     "success", false,
                     "message", "处理失败: " + e.getMessage()

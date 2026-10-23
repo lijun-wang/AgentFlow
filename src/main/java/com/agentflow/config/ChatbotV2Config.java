@@ -18,13 +18,13 @@ import org.springframework.context.annotation.Configuration;
 import java.time.Duration;
 
 /**
- * 聊天机器�?2.0 配置：基�?langchain4j 创建 DeepSeek 模型�?ChatModel �?AiService
+ * 聊天机器人 2.0 配置：基于 langchain4j 创建 DeepSeek 模型的 ChatModel 和 AiService
  */
 @Configuration
 public class ChatbotV2Config {
 
     /**
-     * 创建 DeepSeek 模型�?ChatModel Bean
+     * 创建 DeepSeek 模型的 ChatModel Bean
      * 使用 OpenAI 兼容协议连接 DeepSeek API
      *
      * @param baseUrl  DeepSeek API 地址
@@ -53,12 +53,16 @@ public class ChatbotV2Config {
     }
 
     /**
-     * 创建聊天机器�?2.0 �?AiService Bean
+     * 创建聊天机器人 2.0 的 AiService Bean
      * 集成 ChatModel、SmartToolProvider（按需加载工具）和对话记忆
-     * SmartToolProvider 根据用户消息内容动态决定提供哪些工具，减少 token 消�?     *
+     * SmartToolProvider 根据用户消息内容动态决定提供哪些工具，减少 token 消耗
+     *
      * @param chatModel     DeepSeek ChatModel 实例
      * @param weatherTool   天气查询工具实例
-     * @param geocodingTool 经纬度查询工具实�?     * @param holidayTool   节假日查询工具实�?     * @param commandLineTool 本地命令行执行工具实�?     * @return ChatbotV2Assistant 代理实例
+     * @param geocodingTool 经纬度查询工具实例
+     * @param holidayTool   节假日查询工具实例
+     * @param commandLineTool 本地命令行执行工具实例
+     * @return ChatbotV2Assistant 代理实例
      */
     @Bean
     public ChatbotV2Assistant chatbotV2Assistant(

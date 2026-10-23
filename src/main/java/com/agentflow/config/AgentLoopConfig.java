@@ -34,9 +34,11 @@ import static org.bsc.langgraph4j.action.AsyncNodeAction.node_async;
 /**
  * LangGraph4j Agent Loop 工作流配置：展示智能体循环调用工具的模式
  *
- * 工作流结构（Agent 循环调用工具直到获得最终答案）�? *   START �?agent（LLM 推理并决定是否调用工具）
- *          �?条件边（检查是否有工具调用�? *          �?tools（执行工具）�?回到 agent（循环）
- *          �?�?�?END（无工具调用时结束）
+ * 工作流结构（Agent 循环调用工具直到获得最终答案）：
+ *   START → agent（LLM 推理并决定是否调用工具）
+ *          → 条件边（检查是否有工具调用）
+ *          → tools（执行工具）→ 回到 agent（循环）
+ *          → 或 → END（无工具调用时结束）
  *
  * 展示 LangGraph4j 的条件边与循环能力，实现 ReAct 模式的智能体
  */
@@ -46,13 +48,17 @@ public class AgentLoopConfig {
     private static final Logger log = LoggerFactory.getLogger(AgentLoopConfig.class);
 
     /**
-     * 创建 LangGraph4j Agent Loop 工作�?     *
+     * 创建 LangGraph4j Agent Loop 工作流
+     *
      * 工作流包含两个节点：
-     * 1. agent（智能体推理）：调用 LLM 推理，决定是否使用工�?     * 2. tools（工具执行）：执�?LLM 请求的工具，将结果返回给 agent
+     * 1. agent（智能体推理）：调用 LLM 推理，决定是否使用工具
+     * 2. tools（工具执行）：执行 LLM 请求的工具，将结果返回给 agent
      *
      * @param chatModel     DeepSeek ChatModel 实例
      * @param weatherTool   天气查询工具
-     * @param geocodingTool 经纬度查询工�?     * @param holidayTool   节假日查询工�?     * @return 编译后的 Agent Loop 工作流图
+     * @param geocodingTool 经纬度查询工具
+     * @param holidayTool   节假日查询工具
+     * @return 编译后的 Agent Loop 工作流图
      */
     @Bean
     public CompiledGraph<MessagesState<Object>> agentLoopWorkflow(
@@ -62,7 +68,8 @@ public class AgentLoopConfig {
             HolidayTool holidayTool) {
 
         try {
-            // 提取工具规格，用于传递给 LLM（每个工具单独提取后合并�?            List<ToolSpecification> toolSpecs = new ArrayList<>();
+            // 提取工具规格，用于传递给 LLM（每个工具单独提取后合并）
+            List<ToolSpecification> toolSpecs = new ArrayList<>();
             toolSpecs.addAll(ToolSpecifications.toolSpecificationsFrom(weatherTool));
             toolSpecs.addAll(ToolSpecifications.toolSpecificationsFrom(geocodingTool));
             toolSpecs.addAll(ToolSpecifications.toolSpecificationsFrom(holidayTool));
@@ -72,23 +79,27 @@ public class AgentLoopConfig {
                     // 节点 1：Agent 推理 - 调用 LLM 决定是否使用工具
                     .addNode("agent", node_async(state -> {
                         var messages = state.messages();
-                        log.info("Agent Loop 节点 [Agent] 开始推理，当前消息�? {}", messages.size());
+                        log.info("Agent Loop 节点 [Agent] 开始推理，当前消息数: {}", messages.size());
 
                         // 构建系统提示词，描述可用工具
                         String systemPrompt = """
                                 你是一个智能助手，可以使用以下工具来回答用户问题：
 
-                                1. queryWeather(city: String) - 查询指定城市的天气信�?                                2. queryCityCoordinates(city: String) - 查询指定城市的经纬度坐标
+                                1. queryWeather(city: String) - 查询指定城市的天气信息
+                                2. queryCityCoordinates(city: String) - 查询指定城市的经纬度坐标
                                 3. queryHoliday(year: int) - 查询指定年份的中国法定节假日
 
-                                使用规则�?                                - 如果需要查询实时信息（天气、节假日等），请调用相应工具
+                                使用规则：
+                                - 如果需要查询实时信息（天气、节假日等），请调用相应工具
                                 - 可以组合使用多个工具（如先查经纬度再查天气）
                                 - 如果不需要工具就能回答，直接给出答案
                                 - 每次只调用必要的工具
 
-                                用户问题�?                                """;
+                                用户问题：
+                                """;
 
-                        // 构建消息列表，添加系统提�?                        List<ChatMessage> allMessages = new ArrayList<>();
+                        // 构建消息列表，添加系统提示
+                        List<ChatMessage> allMessages = new ArrayList<>();
                         allMessages.add(UserMessage.from(systemPrompt));
                         for (Object msg : messages) {
                             if (msg instanceof ChatMessage cm) {
@@ -116,11 +127,13 @@ public class AgentLoopConfig {
 
                         return Map.<String, Object>of("messages", aiMessage);
                     }))
-                    // 节点 2：工具执�?- 执行 LLM 请求的工�?                    .addNode("tools", node_async(state -> {
+                    // 节点 2：工具执行 - 执行 LLM 请求的工具
+                    .addNode("tools", node_async(state -> {
                         var messages = state.messages();
-                        log.info("Agent Loop 节点 [Tools] 开始执行工�?);
+                        log.info("Agent Loop 节点 [Tools] 开始执行工具");
 
-                        // 从最后一�?AiMessage 中提取工具调用请�?                        AiMessage lastAiMessage = null;
+                        // 从最后一条 AiMessage 中提取工具调用请求
+                        AiMessage lastAiMessage = null;
                         for (int i = messages.size() - 1; i >= 0; i--) {
                             if (messages.get(i) instanceof AiMessage am) {
                                 lastAiMessage = am;
@@ -130,7 +143,7 @@ public class AgentLoopConfig {
 
                         if (lastAiMessage == null || lastAiMessage.toolExecutionRequests() == null
                                 || lastAiMessage.toolExecutionRequests().isEmpty()) {
-                            log.warn("Agent Loop 节点 [Tools] 未找到工具调用请�?);
+                            log.warn("Agent Loop 节点 [Tools] 未找到工具调用请求");
                             return Map.<String, Object>of();
                         }
 
@@ -139,10 +152,10 @@ public class AgentLoopConfig {
                         for (var request : lastAiMessage.toolExecutionRequests()) {
                             String toolName = request.name();
                             String arguments = request.arguments();
-                            log.info("Agent Loop 节点 [Tools] 执行工具: {}，参�? {}", toolName, arguments);
+                            log.info("Agent Loop 节点 [Tools] 执行工具: {}，参数: {}", toolName, arguments);
 
                             String result = executeTool(toolName, arguments, weatherTool, geocodingTool, holidayTool);
-                            log.info("Agent Loop 节点 [Tools] 工具 {} 执行完成，结果长�? {}", toolName, result.length());
+                            log.info("Agent Loop 节点 [Tools] 工具 {} 执行完成，结果长度: {}", toolName, result.length());
 
                             toolResults.add(ToolExecutionResultMessage.from(request, result));
                         }
@@ -150,15 +163,18 @@ public class AgentLoopConfig {
                         // 返回工具执行结果消息列表
                         return Map.<String, Object>of("messages", toolResults);
                     }))
-                    // 定义�?                    .addEdge(START, "agent")
-                    // Agent 后通过条件边判断：有工具调用则进入 tools，否则结�?                    .addConditionalEdges("agent",
+                    // 定义边
+                    .addEdge(START, "agent")
+                    // Agent 后通过条件边判断：有工具调用则进入 tools，否则结束
+                    .addConditionalEdges("agent",
                             edge_async((MessagesState<Object> state) -> {
                                 var messages = state.messages();
-                                // 检查最后一�?AiMessage 是否有工具调�?                                for (int i = messages.size() - 1; i >= 0; i--) {
+                                // 检查最后一条 AiMessage 是否有工具调用
+                                for (int i = messages.size() - 1; i >= 0; i--) {
                                     if (messages.get(i) instanceof AiMessage am) {
                                         boolean hasToolCalls = am.toolExecutionRequests() != null
                                                 && !am.toolExecutionRequests().isEmpty();
-                                        log.info("Agent Loop 条件边判断：{}工具调用", hasToolCalls ? "�? : "�?);
+                                        log.info("Agent Loop 条件边判断：{}工具调用", hasToolCalls ? "有" : "无");
                                         return hasToolCalls ? "continue" : "end";
                                     }
                                 }
@@ -172,21 +188,24 @@ public class AgentLoopConfig {
                     .addEdge("tools", "agent");
 
             var compiledGraph = graph.compile();
-            log.info("LangGraph4j Agent Loop 工作流构建成�? agent �?[条件边] �?tools �?agent（循环）�?END");
+            log.info("LangGraph4j Agent Loop 工作流构建成功: agent → [条件边] → tools → agent（循环）或 END");
             return compiledGraph;
 
         } catch (GraphStateException e) {
-            log.error("构建 LangGraph4j Agent Loop 工作流失�?, e);
-            throw new RuntimeException("构建 Agent Loop 工作流失�?, e);
+            log.error("构建 LangGraph4j Agent Loop 工作流失败", e);
+            throw new RuntimeException("构建 Agent Loop 工作流失败", e);
         }
     }
 
     /**
-     * 执行指定的工�?     *
+     * 执行指定的工具
+     *
      * @param toolName      工具名称
      * @param arguments     工具参数（JSON 字符串）
      * @param weatherTool   天气工具
-     * @param geocodingTool 经纬度工�?     * @param holidayTool   节假日工�?     * @return 工具执行结果
+     * @param geocodingTool 经纬度工具
+     * @param holidayTool   节假日工具
+     * @return 工具执行结果
      */
     private String executeTool(String toolName, String arguments,
                                WeatherTool weatherTool,

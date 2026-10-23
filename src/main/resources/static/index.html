@@ -714,6 +714,37 @@
             font-weight: 600;
             vertical-align: middle;
         }
+        .kg-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 8px;
+            font-weight: 600;
+            vertical-align: middle;
+        }
+        .kg-entity-tag {
+            display: inline-block;
+            background: #eef2ff;
+            color: #3730a3;
+            border-radius: 6px;
+            padding: 4px 8px;
+            margin: 0 6px 6px 0;
+            font-size: 12px;
+        }
+        .kg-triple {
+            font-size: 13px;
+            padding: 8px 0;
+            border-bottom: 1px solid #f3f4f6;
+            color: #374151;
+        }
+        .kg-predicate {
+            color: #7c3aed;
+            font-weight: 600;
+            margin: 0 8px;
+        }
 
         /* 智能问答 2.0 模块 */
         .chat-v2-container {
@@ -2906,6 +2937,42 @@
             </div>
             <div class="search-results" id="searchResultsV2"></div>
         </div>
+
+        <!-- 文件上传 3.0（知识图谱） -->
+        <div class="card">
+            <h2><span class="icon">&#128196;</span> 文件上传 3.0 <span class="kg-badge">知识图谱</span></h2>
+            <div class="upload-area" id="uploadAreaV3">
+                <div class="upload-icon">&#128228;</div>
+                <p>点击或拖拽文件到此处上传（分块向量化并抽取知识图谱）</p>
+                <span class="hint">支持 TXT、PDF、DOCX 格式，最大 50MB。抽取需调用模型，文件较大时请耐心等待。</span>
+                <input type="file" id="fileInputV3" accept=".txt,.pdf,.docx,.doc">
+            </div>
+            <div class="file-info" id="fileInfoV3">
+                <span class="file-name" id="fileNameV3"></span>
+                <span class="file-size" id="fileSizeV3"></span>
+                <button class="remove-btn" id="removeBtnV3" title="移除文件">&times;</button>
+            </div>
+            <div class="progress-bar" id="progressBarV3">
+                <div class="progress-track">
+                    <div class="progress-fill" id="progressFillV3"></div>
+                </div>
+                <div class="progress-text" id="progressTextV3">处理中...</div>
+            </div>
+            <div class="message" id="uploadMessageV3"></div>
+            <div class="btn-group">
+                <button class="btn btn-primary" id="uploadBtnV3" disabled>上传并图谱化</button>
+            </div>
+        </div>
+
+        <!-- 知识图谱查询 3.0 -->
+        <div class="card">
+            <h2><span class="icon">&#128200;</span> 知识图谱查询 3.0 <span class="kg-badge">知识图谱</span></h2>
+            <div class="search-input-group">
+                <input type="text" id="graphFileNameV3" placeholder="输入上传时的文件名...">
+                <button class="btn btn-search" id="graphBtnV3">查询图谱</button>
+            </div>
+            <div class="search-results" id="graphResultsV3"></div>
+        </div>
         </div><!-- /tab-doc -->
 
         <!-- ========== Tab 2: 智能对话 ========== -->
@@ -4005,6 +4072,179 @@
         searchInputV2.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') searchBtnV2.click();
         });
+
+        // ========== 文件上传 3.0 模块（知识图谱） ==========
+
+        const uploadAreaV3 = document.getElementById('uploadAreaV3');
+        const fileInputV3 = document.getElementById('fileInputV3');
+        const fileInfoV3 = document.getElementById('fileInfoV3');
+        const fileNameV3 = document.getElementById('fileNameV3');
+        const fileSizeV3 = document.getElementById('fileSizeV3');
+        const removeBtnV3 = document.getElementById('removeBtnV3');
+        const uploadBtnV3 = document.getElementById('uploadBtnV3');
+        const progressBarV3 = document.getElementById('progressBarV3');
+        const progressFillV3 = document.getElementById('progressFillV3');
+        const progressTextV3 = document.getElementById('progressTextV3');
+        const uploadMessageV3 = document.getElementById('uploadMessageV3');
+        const graphFileNameV3 = document.getElementById('graphFileNameV3');
+        const graphBtnV3 = document.getElementById('graphBtnV3');
+        const graphResultsV3 = document.getElementById('graphResultsV3');
+
+        let selectedFileV3 = null;
+
+        uploadAreaV3.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadAreaV3.classList.add('dragover');
+        });
+        uploadAreaV3.addEventListener('dragleave', () => {
+            uploadAreaV3.classList.remove('dragover');
+        });
+        uploadAreaV3.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadAreaV3.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleFileV3(e.dataTransfer.files[0]);
+            }
+        });
+        fileInputV3.addEventListener('change', () => {
+            if (fileInputV3.files.length > 0) {
+                handleFileV3(fileInputV3.files[0]);
+            }
+        });
+
+        function handleFileV3(file) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (!['txt', 'pdf', 'docx', 'doc'].includes(ext)) {
+                showMessageV3('error', '不支持的文件格式，请上传 TXT、PDF 或 DOCX 文件');
+                return;
+            }
+            selectedFileV3 = file;
+            fileNameV3.textContent = file.name;
+            fileSizeV3.textContent = formatSize(file.size);
+            fileInfoV3.classList.add('show');
+            uploadBtnV3.disabled = false;
+            hideMessageV3();
+        }
+
+        removeBtnV3.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectedFileV3 = null;
+            fileInputV3.value = '';
+            fileInfoV3.classList.remove('show');
+            uploadBtnV3.disabled = true;
+            hideMessageV3();
+        });
+
+        uploadBtnV3.addEventListener('click', async () => {
+            if (!selectedFileV3) return;
+
+            uploadBtnV3.disabled = true;
+            uploadBtnV3.innerHTML = '<span class="spinner"></span>处理中...';
+            progressBarV3.classList.add('show');
+            progressFillV3.style.width = '0%';
+            progressTextV3.textContent = '正在上传文件...';
+            hideMessageV3();
+
+            try {
+                const formData = new FormData();
+                formData.append('file', selectedFileV3);
+
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    progress = Math.min(progress + Math.random() * 8, 90);
+                    progressFillV3.style.width = progress + '%';
+                    if (progress > 15) progressTextV3.textContent = '正在提取文本并分块...';
+                    if (progress > 35) progressTextV3.textContent = '正在生成向量...';
+                    if (progress > 55) progressTextV3.textContent = '正在抽取知识三元组...';
+                    if (progress > 80) progressTextV3.textContent = '正在写入知识图谱...';
+                }, 500);
+
+                const response = await fetch('/api/documents/v3/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                clearInterval(progressInterval);
+                progressFillV3.style.width = '100%';
+
+                const result = await response.json();
+
+                if (result.success) {
+                    progressTextV3.textContent = '处理完成！';
+                    showMessageV3('success', `文件 "${result.fileName}" 图谱化成功，分块 ${result.chunkCount}，实体 ${result.entityCount}，关系 ${result.relationCount}`);
+                    graphFileNameV3.value = result.fileName;
+                    selectedFileV3 = null;
+                    fileInputV3.value = '';
+                    fileInfoV3.classList.remove('show');
+                    await loadGraphV3(result.fileName);
+                } else {
+                    showMessageV3('error', result.message);
+                }
+            } catch (error) {
+                showMessageV3('error', '上传失败: ' + error.message);
+            } finally {
+                uploadBtnV3.disabled = false;
+                uploadBtnV3.innerHTML = '上传并图谱化';
+                setTimeout(() => {
+                    progressBarV3.classList.remove('show');
+                }, 2000);
+            }
+        });
+
+        function showMessageV3(type, text) {
+            uploadMessageV3.className = 'message show ' + type;
+            uploadMessageV3.textContent = text;
+        }
+        function hideMessageV3() {
+            uploadMessageV3.className = 'message';
+        }
+
+        graphBtnV3.addEventListener('click', async () => {
+            const name = graphFileNameV3.value.trim();
+            if (!name) {
+                alert('请输入文件名');
+                return;
+            }
+            await loadGraphV3(name);
+        });
+        graphFileNameV3.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') graphBtnV3.click();
+        });
+
+        async function loadGraphV3(fileName) {
+            graphBtnV3.disabled = true;
+            graphBtnV3.innerHTML = '<span class="spinner"></span>查询中...';
+            graphResultsV3.innerHTML = '';
+            try {
+                const response = await fetch('/api/documents/v3/graph?fileName=' + encodeURIComponent(fileName));
+                const result = await response.json();
+                if (result.success) {
+                    const entities = result.entities || [];
+                    const relations = result.relations || [];
+                    if (entities.length === 0 && relations.length === 0) {
+                        graphResultsV3.innerHTML = '<div class="no-results">未找到该文件的图谱数据</div>';
+                    } else {
+                        const entityHtml = entities.map(e =>
+                            `<span class="kg-entity-tag">${escapeHtml(e.name)} <small>(${escapeHtml(e.type)})</small></span>`
+                        ).join('');
+                        const relationHtml = relations.map(r =>
+                            `<div class="kg-triple">${escapeHtml(r.fromName)} <span class="kg-predicate">${escapeHtml(r.predicate)}</span> ${escapeHtml(r.toName)} <small style="color:#9ca3af;">(${Number(r.confidence).toFixed(2)})</small></div>`
+                        ).join('');
+                        graphResultsV3.innerHTML =
+                            `<div class="result-item"><div class="result-header"><span class="result-file">${escapeHtml(result.fileName)}</span><span style="font-size:12px;color:#999;">实体 ${result.entityCount} · 关系 ${result.relationCount}</span></div>` +
+                            `<div style="margin-top:10px;">${entityHtml}</div>` +
+                            `<div style="margin-top:12px;">${relationHtml}</div></div>`;
+                    }
+                } else {
+                    graphResultsV3.innerHTML = `<div class="no-results" style="color:#991b1b;">${escapeHtml(result.message || '查询失败')}</div>`;
+                }
+            } catch (error) {
+                graphResultsV3.innerHTML = `<div class="no-results" style="color:#991b1b;">查询失败: ${escapeHtml(error.message)}</div>`;
+            } finally {
+                graphBtnV3.disabled = false;
+                graphBtnV3.innerHTML = '查询图谱';
+            }
+        }
 
         // ========== LangGraph4j 工作流模块 ==========
 

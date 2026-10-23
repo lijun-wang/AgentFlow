@@ -13,9 +13,10 @@ import java.util.Map;
 /**
  * LangGraph4j Plan-and-Execute 工作流控制器
  *
- * 通过 POST /api/planexecute/process 接收用户请求�? * 驱动 LangGraph4j Plan-and-Execute 工作流（规划 �?执行 �?评估 �?综合输出）执行并返回结果
+ * 通过 POST /api/planexecute/process 接收用户请求，
+ * 驱动 LangGraph4j Plan-and-Execute 工作流（规划 → 执行 → 评估 → 综合输出）执行并返回结果
  */
-@Tag(name = "LangGraph4j Plan-and-Execute 工作�?, description = "基于 LangGraph4j �?Plan-and-Execute 动态规划工作流 Demo 接口")
+@Tag(name = "LangGraph4j Plan-and-Execute 工作流", description = "基于 LangGraph4j 的 Plan-and-Execute 动态规划工作流 Demo 接口")
 @RestController
 @RequestMapping("/api/planexecute")
 public class PlanExecuteController {
@@ -29,10 +30,12 @@ public class PlanExecuteController {
     }
 
     /**
-     * 提交请求�?LangGraph4j Plan-and-Execute 工作流进行处�?     * Planner 制定计划，Executor 执行，Replanner 评估，最终综合输�?     */
+     * 提交请求到 LangGraph4j Plan-and-Execute 工作流进行处理
+     * Planner 制定计划，Executor 执行，Replanner 评估，最终综合输出
+     */
     @Operation(
-            summary = "提交请求�?Plan-and-Execute 工作�?,
-            description = "基于 LangGraph4j 实现 Plan-and-Execute 模式：Planner 制定计划 �?Executor 执行 �?Replanner 评估调整 �?综合输出。支持动态规划与条件路由，展示智能任务分解能力�?
+            summary = "提交请求到 Plan-and-Execute 工作流",
+            description = "基于 LangGraph4j 实现 Plan-and-Execute 模式：Planner 制定计划 → Executor 执行 → Replanner 评估调整 → 综合输出。支持动态规划与条件路由，展示智能任务分解能力。"
     )
     @PostMapping("/process")
     public ResponseEntity<Map<String, Object>> process(@RequestBody Map<String, String> request) {
@@ -45,13 +48,13 @@ public class PlanExecuteController {
                 ));
             }
 
-            log.info("Plan-Execute 工作流收到请�? {}", userRequest);
+            log.info("Plan-Execute 工作流收到请求: {}", userRequest);
 
             Map<String, Object> result = planExecuteService.process(userRequest);
             return ResponseEntity.ok(result);
 
         } catch (Exception e) {
-            log.error("Plan-Execute 工作流处理失�?, e);
+            log.error("Plan-Execute 工作流处理失败", e);
             return ResponseEntity.internalServerError().body(Map.of(
                     "success", false,
                     "message", "处理失败: " + e.getMessage()

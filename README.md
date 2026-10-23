@@ -112,8 +112,10 @@ src/main/java/com/agentflow/
 执行 `src/main/resources/schema.sql` 创建数据表：
 - `document_chunk`：Spring AI 向量存储表
 - `document_chunk_langchain4j`：LangChain4j 向量存储表
+- `document_chunk_v3`：知识图谱 3.0 分块溯源表
+- `kg_entity` / `kg_relation`：知识图谱实体与关系表
 
-两张表结构相同，均包含 1024 维向量字段，并建立 IVFFlat 余弦距离索引。
+前两张表结构相同，均包含 1024 维向量字段，并建立 IVFFlat 余弦距离索引。
 
 ---
 
@@ -281,6 +283,48 @@ src/main/java/com/agentflow/
 | topK | int | 否 | 10 | 返回结果数量 |
 
 - **响应示例**：同 [1.3 向量搜索](#13-向量搜索)
+
+---
+
+### 2.4 文档管理 V3（知识图谱）
+
+> 控制器：`DocumentV3Controller` | 路径前缀：`/api/documents/v3`
+>
+> 仅在 `database.available=true` 时注册
+
+#### 2.4.1 上传文档并构建知识图谱
+
+- **URL**：`POST /api/documents/v3/upload`
+- **描述**：标题分块 + 向量写入 `document_chunk_v3`，再按块用 DeepSeek 抽取三元组，写入 `kg_entity` / `kg_relation`（含文档-章节结构边）
+- **Content-Type**：`multipart/form-data`
+- **请求参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| file | MultipartFile | 是 | 文档文件，支持 TXT、PDF、DOCX 格式 |
+
+- **响应示例**：
+
+```json
+{
+  "success": true,
+  "message": "文件处理成功（知识图谱）",
+  "fileName": "example.pdf",
+  "chunkCount": 12,
+  "entityCount": 30,
+  "relationCount": 48
+}
+```
+
+#### 2.4.2 查询文件知识图谱
+
+- **URL**：`GET /api/documents/v3/graph`
+- **描述**：按上传文件名返回该文件关联的实体与关系三元组
+- **请求参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| fileName | String | 是 | 上传时的文件名 |
 
 ---
 
@@ -726,6 +770,12 @@ src/main/java/com/agentflow/
 ### document_chunk_langchain4j 表（LangChain4j 向量存储）
 
 表结构与 `document_chunk` 相同，专用于 LangChain4j 的分块和向量化存储。
+
+### document_chunk_v3 / kg_entity / kg_relation（知识图谱 3.0）
+
+- `document_chunk_v3`：表结构与 `document_chunk` 相同，作为图谱关系的分块溯源
+- `kg_entity`：实体（name、canonical_name、type），`(canonical_name, type)` 唯一
+- `kg_relation`：三元组边，带 `predicate`、`confidence`、`chunk_id`、`file_name`
 
 ---
 

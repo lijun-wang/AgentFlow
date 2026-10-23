@@ -15,7 +15,9 @@ import java.util.*;
  * LangGraph4j Agent Loop 工作流服务：执行智能体循环调用工具的流程
  *
  * 每次请求通过 CompiledGraph.stream() 驱动 Agent Loop 工作流执行，
- * Agent 节点调用 LLM 推理并决定是否使用工具，Tools 节点执行工具后回�?Agent�? * 直到 LLM 给出最终答案，收集每个步骤的输出返回给前端展示�? */
+ * Agent 节点调用 LLM 推理并决定是否使用工具，Tools 节点执行工具后回到 Agent，
+ * 直到 LLM 给出最终答案，收集每个步骤的输出返回给前端展示。
+ */
 @Service
 public class AgentLoopService {
 
@@ -23,7 +25,7 @@ public class AgentLoopService {
 
     /** 节点名称到中文标签的映射 */
     private static final Map<String, String> STEP_LABELS = Map.of(
-            "agent", "智能体推�?,
+            "agent", "智能体推理",
             "tools", "工具执行"
     );
 
@@ -41,19 +43,23 @@ public class AgentLoopService {
     }
 
     /**
-     * 处理用户请求，执�?LangGraph4j Agent Loop 工作�?     *
-     * @param userRequest 用户输入的请求信�?     * @return 包含最终回答、迭代次数和各步骤执行结果的结构化响�?     */
+     * 处理用户请求，执行 LangGraph4j Agent Loop 工作流
+     *
+     * @param userRequest 用户输入的请求信息
+     * @return 包含最终回答、迭代次数和各步骤执行结果的结构化响应
+     */
     public Map<String, Object> process(String userRequest) {
-        log.info("Agent Loop 工作流开始处�? {}", userRequest);
+        log.info("Agent Loop 工作流开始处理: {}", userRequest);
         long startTime = System.currentTimeMillis();
 
         try {
-            // 构建初始状态：将用户请求作�?UserMessage 放入消息列表
+            // 构建初始状态：将用户请求作为 UserMessage 放入消息列表
             Map<String, Object> inputs = Map.of(
                     "messages", UserMessage.from(userRequest)
             );
 
-            // 执行工作流，收集每个节点的输�?            List<Map<String, Object>> steps = new ArrayList<>();
+            // 执行工作流，收集每个节点的输出
+            List<Map<String, Object>> steps = new ArrayList<>();
             int iteration = 0;
             String finalAnswer = "";
 
@@ -62,7 +68,8 @@ public class AgentLoopService {
                 String stepLabel = STEP_LABELS.getOrDefault(nodeName, nodeName);
                 String stepIcon = STEP_ICONS.getOrDefault(nodeName, "⚙️");
 
-                // 每进�?agent 节点算一次迭�?                if ("agent".equals(nodeName)) {
+                // 每进入 agent 节点算一次迭代
+                if ("agent".equals(nodeName)) {
                     iteration++;
                 }
 
@@ -72,7 +79,8 @@ public class AgentLoopService {
                 // 判断步骤类型
                 String stepType = "agent".equals(nodeName) ? "reasoning" : "tool_execution";
 
-                // 提取工具调用信息（如果有�?                List<Map<String, String>> toolCalls = extractToolCalls(step.state(), nodeName);
+                // 提取工具调用信息（如果有）
+                List<Map<String, String>> toolCalls = extractToolCalls(step.state(), nodeName);
 
                 steps.add(Map.of(
                         "step", nodeName,
@@ -85,15 +93,16 @@ public class AgentLoopService {
                         "status", "completed"
                 ));
 
-                // 如果是最后一�?agent 节点且没有工具调用，提取最终答�?                if ("agent".equals(nodeName) && !hasToolCalls(step.state())) {
+                // 如果是最后一个 agent 节点且没有工具调用，提取最终答案
+                if ("agent".equals(nodeName) && !hasToolCalls(step.state())) {
                     finalAnswer = stepOutput;
                 }
 
-                log.info("Agent Loop 节点 [{}] �?{} 次迭代执行完�?, stepLabel, iteration);
+                log.info("Agent Loop 节点 [{}] 第 {} 次迭代执行完成", stepLabel, iteration);
             }
 
             long elapsed = System.currentTimeMillis() - startTime;
-            log.info("Agent Loop 工作流处理完成，�?{} 次迭代，{} 个步骤，耗时 {}ms",
+            log.info("Agent Loop 工作流处理完成，共 {} 次迭代，{} 个步骤，耗时 {}ms",
                     iteration, steps.size(), elapsed);
 
             Map<String, Object> result = new HashMap<>();
@@ -104,10 +113,10 @@ public class AgentLoopService {
             return result;
 
         } catch (Exception e) {
-            log.error("Agent Loop 工作流执行失�?, e);
+            log.error("Agent Loop 工作流执行失败", e);
             return Map.of(
                     "success", false,
-                    "message", "工作流执行失�? " + e.getMessage()
+                    "message", "工作流执行失败: " + e.getMessage()
             );
         }
     }
@@ -122,7 +131,7 @@ public class AgentLoopService {
                 return "";
             }
 
-            // 对于 agent 节点，提取最后一�?AiMessage
+            // 对于 agent 节点，提取最后一条 AiMessage
             if ("agent".equals(nodeName)) {
                 for (int i = messages.size() - 1; i >= 0; i--) {
                     Object msg = messages.get(i);
@@ -132,19 +141,21 @@ public class AgentLoopService {
                         if (hasToolCalls) {
                             // 如果有工具调用，返回工具调用描述
                             StringBuilder sb = new StringBuilder();
-                            sb.append("决定调用工具�?);
+                            sb.append("决定调用工具：");
                             for (var req : am.toolExecutionRequests()) {
                                 sb.append(req.name()).append("(").append(req.arguments()).append(") ");
                             }
                             return sb.toString();
                         } else {
-                            // 否则返回最终答�?                            return am.text();
+                            // 否则返回最终答案
+                            return am.text();
                         }
                     }
                 }
             }
 
-            // 对于 tools 节点，提取工具执行结�?            if ("tools".equals(nodeName)) {
+            // 对于 tools 节点，提取工具执行结果
+            if ("tools".equals(nodeName)) {
                 StringBuilder sb = new StringBuilder();
                 for (Object msg : messages) {
                     if (msg instanceof ToolExecutionResultMessage term) {
@@ -198,7 +209,8 @@ public class AgentLoopService {
     }
 
     /**
-     * 检查状态中最后一�?AiMessage 是否有工具调�?     */
+     * 检查状态中最后一条 AiMessage 是否有工具调用
+     */
     private boolean hasToolCalls(MessagesState<Object> state) {
         try {
             var messages = state.messages();
@@ -209,7 +221,7 @@ public class AgentLoopService {
                 }
             }
         } catch (Exception e) {
-            log.warn("检查工具调用失�?, e);
+            log.warn("检查工具调用失败", e);
         }
         return false;
     }

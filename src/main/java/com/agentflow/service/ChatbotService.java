@@ -32,7 +32,9 @@ public class ChatbotService {
     /**
      * 发送消息并获取回复（支持多轮对话历史）
      *
-     * @param history 对话历史（包�?user �?assistant 消息�?     * @return 机器人回复内�?     */
+     * @param history 对话历史（包含 user 和 assistant 消息）
+     * @return 机器人回复内容
+     */
     public String chat(List<ChatbotMessage> history) {
         log.info("调用 DeepSeek 聊天，消息数: {}", history.size());
 
@@ -40,7 +42,7 @@ public class ChatbotService {
         List<Map<String, Object>> messages = new ArrayList<>();
         messages.add(Map.of(
                 "role", "system",
-                "content", "你是一个智能助手，可以回答各种问题。请用简洁、准确、友好的方式回答用户的问题�?
+                "content", "你是一个智能助手，可以回答各种问题。请用简洁、准确、友好的方式回答用户的问题。"
         ));
 
         // 添加对话历史
@@ -58,7 +60,7 @@ public class ChatbotService {
                     "temperature", 0.7
             );
 
-            log.debug("DeepSeek 请求�? {}", requestBody);
+            log.debug("DeepSeek 请求体: {}", requestBody);
 
             Map<String, Object> response = deepSeekRestClient.post()
                     .uri("/v1/chat/completions")
@@ -71,14 +73,14 @@ public class ChatbotService {
                 if (!choices.isEmpty()) {
                     Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
                     String answer = (String) message.get("content");
-                    log.info("DeepSeek 回复完成，回答长�? {}", answer.length());
+                    log.info("DeepSeek 回复完成，回答长度: {}", answer.length());
                     log.debug("DeepSeek 回复内容: {}", answer);
                     return answer;
                 }
             }
 
-            log.warn("DeepSeek 返回空结�?);
-            return "抱歉，无法生成回答�?;
+            log.warn("DeepSeek 返回空结果");
+            return "抱歉，无法生成回答。";
 
         } catch (Exception e) {
             log.error("调用 DeepSeek 失败", e);

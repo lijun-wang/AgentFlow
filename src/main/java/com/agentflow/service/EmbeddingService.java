@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 嵌入服务：调�?OpenAI Embedding API 将文本转换为向量
+ * 嵌入服务：调用 OpenAI Embedding API 将文本转换为向量
  */
 @Service
 public class EmbeddingService {
@@ -29,17 +29,17 @@ public class EmbeddingService {
      * 将文本列表批量转换为向量
      *
      * @param texts 文本列表
-     * @return 向量列表（每�?float[] 长度�?1024�?
+     * @return 向量列表（每个 float[] 长度为 1024）
      */
     public List<float[]> embedTexts(List<String> texts) {
-        log.info("开始生成嵌入向量，�?{} 个文本块", texts.size());
+        log.info("开始生成嵌入向量，共 {} 个文本块", texts.size());
 
         List<float[]> allEmbeddings = new ArrayList<>();
 
         for (int i = 0; i < texts.size(); i += MAX_BATCH_SIZE) {
             int end = Math.min(i + MAX_BATCH_SIZE, texts.size());
             List<String> batch = texts.subList(i, end);
-            log.debug("发送第 {}/{} 批，�?{} 个文�?, (i / MAX_BATCH_SIZE) + 1,
+            log.debug("发送第 {}/{} 批，共 {} 个文本", (i / MAX_BATCH_SIZE) + 1,
                     (int) Math.ceil((double) texts.size() / MAX_BATCH_SIZE), batch.size());
 
             EmbeddingRequest request = new EmbeddingRequest(batch, null);
@@ -50,7 +50,7 @@ public class EmbeddingService {
                     .forEach(allEmbeddings::add);
         }
 
-        log.info("嵌入向量生成完成，共 {} 个向�?, allEmbeddings.size());
+        log.info("嵌入向量生成完成，共 {} 个向量", allEmbeddings.size());
         return allEmbeddings;
     }
 
@@ -58,7 +58,7 @@ public class EmbeddingService {
      * 将单个文本转换为向量
      *
      * @param text 文本
-     * @return 向量（float[] 长度�?1024�?
+     * @return 向量（float[] 长度为 1024）
      */
     public float[] embedText(String text) {
         return embeddingModel.embed(text);

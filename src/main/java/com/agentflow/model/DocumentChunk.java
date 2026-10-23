@@ -3,7 +3,7 @@ package com.agentflow.model;
 import java.time.LocalDateTime;
 
 /**
- * 文档分块模型，对应数据库 document_chunk �?
+ * 文档分块模型，对应数据库 document_chunk 表
  */
 public class DocumentChunk {
 
@@ -11,11 +11,11 @@ public class DocumentChunk {
     private Long id;
     /** 上传的文件名 */
     private String fileName;
-    /** 分块在文档中的序号（�?开始） */
+    /** 分块在文档中的序号（从0开始） */
     private Integer chunkIndex;
-    /** 分块的文本内�?*/
+    /** 分块的文本内容 */
     private String chunkText;
-    /** 文本对应的嵌入向量（维度由模型决定，�?024�?*/
+    /** 文本对应的嵌入向量（维度由模型决定，如1024） */
     private float[] embedding;
     /** 余弦距离：查询向量与该分块向量的余弦距离，范围[0,2]，值越小越相似（仅搜索时填充） */
     private Double cosineDistance;

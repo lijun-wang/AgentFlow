@@ -15,7 +15,7 @@ import java.util.Map;
 /**
  * 聊天机器人控制器：提供通用 DeepSeek 对话接口
  */
-@Tag(name = "聊天机器�?, description = "基于 DeepSeek 的通用对话接口")
+@Tag(name = "聊天机器人", description = "基于 DeepSeek 的通用对话接口")
 @RestController
 @RequestMapping("/api/chatbot")
 public class ChatbotController {
@@ -32,8 +32,8 @@ public class ChatbotController {
      * 发送消息并获取回复
      */
     @Operation(
-            summary = "发送聊天消�?,
-            description = "发送用户消息，返回机器人回复。支持传入对话历史实现多轮对话�?
+            summary = "发送聊天消息",
+            description = "发送用户消息，返回机器人回复。支持传入对话历史实现多轮对话。"
     )
     @PostMapping("/send")
     public ResponseEntity<Map<String, Object>> send(@RequestBody Map<String, Object> request) {
@@ -52,7 +52,8 @@ public class ChatbotController {
             List<Map<String, String>> historyRaw = (List<Map<String, String>>) request.get("history");
             List<ChatbotMessage> history = new java.util.ArrayList<>();
 
-            // 将历史消息转为模型对�?            if (historyRaw != null) {
+            // 将历史消息转为模型对象
+            if (historyRaw != null) {
                 for (Map<String, String> msg : historyRaw) {
                     history.add(new ChatbotMessage(msg.get("role"), msg.get("content")));
                 }
@@ -70,7 +71,7 @@ public class ChatbotController {
             ));
 
         } catch (Exception e) {
-            log.error("聊天机器人处理失�?, e);
+            log.error("聊天机器人处理失败", e);
             return ResponseEntity.internalServerError().body(Map.of(
                     "success", false,
                     "message", "处理失败: " + e.getMessage()

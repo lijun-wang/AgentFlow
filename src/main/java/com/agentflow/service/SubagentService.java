@@ -11,9 +11,12 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 
 /**
- * LangGraph4j Subagent �?Agent 协作工作流服�? *
+ * LangGraph4j Subagent 多 Agent 协作工作流服务
+ *
  * 每次请求通过 CompiledGraph.stream() 驱动 Subagent 工作流执行，
- * Supervisor 节点分析请求类型并路由到对应专家�?Agent�? * 收集每个节点的输出作为步骤结果返回给前端展示�? */
+ * Supervisor 节点分析请求类型并路由到对应专家子 Agent，
+ * 收集每个节点的输出作为步骤结果返回给前端展示。
+ */
 @Service
 public class SubagentService {
 
@@ -39,30 +42,34 @@ public class SubagentService {
             "summary", "📋"
     );
 
-    /** 专家�?Agent 节点集合 */
+    /** 专家子 Agent 节点集合 */
     private static final Set<String> EXPERT_NODES = Set.of("coding", "writing", "qa");
 
     private final CompiledGraph<MessagesState<Object>> subagentWorkflow;
 
     public SubagentService(CompiledGraph<MessagesState<Object>> subagentWorkflow) {
         this.subagentWorkflow = subagentWorkflow;
-        log.info("SubagentService 初始化完成，�?Agent 协作工作流已就绪");
+        log.info("SubagentService 初始化完成，多 Agent 协作工作流已就绪");
     }
 
     /**
-     * 处理用户请求，执�?LangGraph4j Subagent 工作�?     *
-     * @param userRequest 用户输入的请求信�?     * @return 包含最终回答、路由信息和各步骤执行结果的结构化响�?     */
+     * 处理用户请求，执行 LangGraph4j Subagent 工作流
+     *
+     * @param userRequest 用户输入的请求信息
+     * @return 包含最终回答、路由信息和各步骤执行结果的结构化响应
+     */
     public Map<String, Object> process(String userRequest) {
-        log.info("Subagent 工作流开始处�? {}", userRequest);
+        log.info("Subagent 工作流开始处理: {}", userRequest);
         long startTime = System.currentTimeMillis();
 
         try {
-            // 构建初始状态：将用户请求作�?UserMessage 放入消息列表
+            // 构建初始状态：将用户请求作为 UserMessage 放入消息列表
             Map<String, Object> inputs = Map.of(
                     "messages", UserMessage.from(userRequest)
             );
 
-            // 执行工作流，收集每个节点的输�?            List<Map<String, Object>> steps = new ArrayList<>();
+            // 执行工作流，收集每个节点的输出
+            List<Map<String, Object>> steps = new ArrayList<>();
             String routedTo = "";
             String routedLabel = "";
             String routedIcon = "";
@@ -72,7 +79,8 @@ public class SubagentService {
                 String stepLabel = STEP_LABELS.getOrDefault(nodeName, nodeName);
                 String stepIcon = STEP_ICONS.getOrDefault(nodeName, "⚙️");
 
-                // 从节点输出状态中提取最新消息作为该步骤的输�?                String stepOutput = extractLastAiMessage(step.state());
+                // 从节点输出状态中提取最新消息作为该步骤的输出
+                String stepOutput = extractLastAiMessage(step.state());
 
                 // 检测路由目标（Supervisor 节点之后的第一个专家节点）
                 if (EXPERT_NODES.contains(nodeName)) {
@@ -106,7 +114,7 @@ public class SubagentService {
             }
 
             long elapsed = System.currentTimeMillis() - startTime;
-            log.info("Subagent 工作流处理完成，路由�? {}，共 {} 个步骤，耗时 {}ms", routedTo, steps.size(), elapsed);
+            log.info("Subagent 工作流处理完成，路由到: {}，共 {} 个步骤，耗时 {}ms", routedTo, steps.size(), elapsed);
 
             Map<String, Object> result = new HashMap<>();
             result.put("success", true);
@@ -119,16 +127,17 @@ public class SubagentService {
             return result;
 
         } catch (Exception e) {
-            log.error("Subagent 工作流执行失�?, e);
+            log.error("Subagent 工作流执行失败", e);
             return Map.of(
                     "success", false,
-                    "message", "工作流执行失�? " + e.getMessage()
+                    "message", "工作流执行失败: " + e.getMessage()
             );
         }
     }
 
     /**
-     * �?MessagesState 中提取最后一�?AiMessage 的文本内�?     */
+     * 从 MessagesState 中提取最后一条 AiMessage 的文本内容
+     */
     private String extractLastAiMessage(MessagesState<Object> state) {
         try {
             var messages = state.messages();

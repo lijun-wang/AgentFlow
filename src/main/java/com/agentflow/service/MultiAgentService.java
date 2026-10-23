@@ -11,10 +11,12 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 
 /**
- * LangGraph4j Multi Agent 圆桌讨论工作流服�? *
+ * LangGraph4j Multi Agent 圆桌讨论工作流服务
+ *
  * 每次请求通过 CompiledGraph.stream() 驱动 Multi Agent 工作流执行，
  * 多个专家角色依次对同一话题发表观点，最后综合形成共识，
- * 收集每个节点的输出作为步骤结果返回给前端展示�? */
+ * 收集每个节点的输出作为步骤结果返回给前端展示。
+ */
 @Service
 public class MultiAgentService {
 
@@ -24,9 +26,9 @@ public class MultiAgentService {
     private static final Map<String, String> STEP_LABELS = Map.of(
             "topic_analysis", "话题分析",
             "product_expert", "产品经理",
-            "architect_expert", "架构�?,
-            "developer_expert", "开发�?,
-            "tester_expert", "测试工程�?,
+            "architect_expert", "架构师",
+            "developer_expert", "开发者",
+            "tester_expert", "测试工程师",
             "consensus", "综合共识"
     );
 
@@ -34,13 +36,13 @@ public class MultiAgentService {
     private static final Map<String, String> STEP_ICONS = Map.of(
             "topic_analysis", "🔍",
             "product_expert", "📊",
-            "architect_expert", "🏗�?,
+            "architect_expert", "🏗️",
             "developer_expert", "💻",
             "tester_expert", "🧪",
             "consensus", "🤝"
     );
 
-    /** 专家节点集合（不含话题分析和综合共识�?*/
+    /** 专家节点集合（不含话题分析和综合共识） */
     private static final Set<String> EXPERT_NODES = Set.of(
             "product_expert", "architect_expert", "developer_expert", "tester_expert"
     );
@@ -53,20 +55,23 @@ public class MultiAgentService {
     }
 
     /**
-     * 处理用户话题，执�?LangGraph4j Multi Agent 圆桌讨论工作�?     *
-     * @param userTopic 用户输入的话�?问题
-     * @return 包含最终共识、各专家观点和步骤执行结果的结构化响�?     */
+     * 处理用户话题，执行 LangGraph4j Multi Agent 圆桌讨论工作流
+     *
+     * @param userTopic 用户输入的话题/问题
+     * @return 包含最终共识、各专家观点和步骤执行结果的结构化响应
+     */
     public Map<String, Object> process(String userTopic) {
-        log.info("Multi Agent 圆桌讨论开始处理话�? {}", userTopic);
+        log.info("Multi Agent 圆桌讨论开始处理话题: {}", userTopic);
         long startTime = System.currentTimeMillis();
 
         try {
-            // 构建初始状态：将用户话题作�?UserMessage 放入消息列表
+            // 构建初始状态：将用户话题作为 UserMessage 放入消息列表
             Map<String, Object> inputs = Map.of(
                     "messages", UserMessage.from(userTopic)
             );
 
-            // 执行工作流，收集每个节点的输�?            List<Map<String, Object>> steps = new ArrayList<>();
+            // 执行工作流，收集每个节点的输出
+            List<Map<String, Object>> steps = new ArrayList<>();
             List<String> expertOpinions = new ArrayList<>();
 
             for (var step : multiAgentWorkflow.stream(inputs)) {
@@ -74,10 +79,12 @@ public class MultiAgentService {
                 String stepLabel = STEP_LABELS.getOrDefault(nodeName, nodeName);
                 String stepIcon = STEP_ICONS.getOrDefault(nodeName, "⚙️");
 
-                // 从节点输出状态中提取最新消息作为该步骤的输�?                String stepOutput = extractLastAiMessage(step.state());
+                // 从节点输出状态中提取最新消息作为该步骤的输出
+                String stepOutput = extractLastAiMessage(step.state());
 
-                // 如果是专家节点，收集其观�?                if (EXPERT_NODES.contains(nodeName)) {
-                    expertOpinions.add(stepLabel + "�? + stepOutput);
+                // 如果是专家节点，收集其观点
+                if (EXPERT_NODES.contains(nodeName)) {
+                    expertOpinions.add(stepLabel + "：" + stepOutput);
                 }
 
                 steps.add(Map.of(
@@ -111,13 +118,14 @@ public class MultiAgentService {
             log.error("Multi Agent 圆桌讨论执行失败", e);
             return Map.of(
                     "success", false,
-                    "message", "工作流执行失�? " + e.getMessage()
+                    "message", "工作流执行失败: " + e.getMessage()
             );
         }
     }
 
     /**
-     * �?MessagesState 中提取最后一�?AiMessage 的文本内�?     */
+     * 从 MessagesState 中提取最后一条 AiMessage 的文本内容
+     */
     private String extractLastAiMessage(MessagesState<Object> state) {
         try {
             var messages = state.messages();

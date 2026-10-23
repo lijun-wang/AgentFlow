@@ -18,14 +18,15 @@ import java.util.*;
 import java.util.stream.IntStream;
 
 /**
- * 文档控制器：处理文件上传和向量搜�?
+ * 文档控制器：处理文件上传和向量搜索
  * <p>
- * 仅在 PostgreSQL 数据库可用时注册（通过 database.available 属性控制）
+ * 向量后端由 {@code vector-store.type} 决定（postgres / milvus），
+ * 在对应 {@link com.agentflow.service.VectorStoreService} Bean 可用时注册。
  */
 @Tag(name = "文档管理", description = "文件上传与向量相似度搜索接口")
 @RestController
 @RequestMapping("/api/documents")
-@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "database.available", havingValue = "true")
+@org.springframework.boot.autoconfigure.condition.ConditionalOnBean(com.agentflow.service.VectorStoreService.class)
 public class DocumentController {
 
     private static final Logger log = LoggerFactory.getLogger(DocumentController.class);
@@ -46,11 +47,11 @@ public class DocumentController {
     }
 
     /**
-     * 上传文件：提取文�?�?生成向量 �?存入数据�?
+     * 上传文件：提取文本 → 生成向量 → 存入数据库
      */
     @Operation(
             summary = "上传文档",
-            description = "上传文档文件，自动提取文本、分块、生成嵌入向量并存入数据库。支�?TXT、PDF、DOCX 格式�?
+            description = "上传文档文件，自动提取文本、分块、生成嵌入向量并存入数据库。支持 TXT、PDF、DOCX 格式。"
     )
     @PostMapping("/upload")
     public ResponseEntity<Map<String, Object>> upload(
@@ -58,14 +59,14 @@ public class DocumentController {
             @RequestParam("file") MultipartFile file) {
         try {
             String fileName = file.getOriginalFilename();
-            log.info("开始处理文件上�? {}", fileName);
+            log.info("开始处理文件上传: {}", fileName);
 
-            // 1. 提取文本并分�?
+            // 1. 提取文本并分块
             List<String> chunks = textExtractionService.extractAndChunk(file);
             if (chunks.isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "success", false,
-                        "message", "文件内容为空或无法提取文�?
+                        "message", "文件内容为空或无法提取文本"
                 ));
             }
 
@@ -75,7 +76,7 @@ public class DocumentController {
             // 3. 存储到数据库
             vectorStoreService.saveChunks(fileName, chunks, embeddings);
 
-            log.info("文件处理完成: {}，共 {} 个分�?, fileName, chunks.size());
+            log.info("文件处理完成: {}，共 {} 个分块", fileName, chunks.size());
 
             return ResponseEntity.ok(Map.of(
                     "success", true,
@@ -98,7 +99,7 @@ public class DocumentController {
      */
     @Operation(
             summary = "智能问答",
-            description = "根据用户提问，通过向量检索找到最相关的文档分块，将内容返回展示�?
+            description = "根据用户提问，通过向量检索找到最相关的文档分块，将内容返回展示。"
     )
     @PostMapping("/chat")
     public ResponseEntity<Map<String, Object>> chat(
@@ -114,22 +115,22 @@ public class DocumentController {
 
             log.info("开始智能问答，问题: {}", question);
 
-            // 1. 将问题转为向�?
+            // 1. 将问题转为向量
             float[] queryEmbedding = embeddingService.embedText(question);
 
-            // 2. 检索最相关的文档分�?
+            // 2. 检索最相关的文档分块
             int topK = 10;
             List<DocumentChunk> results = vectorStoreService.search(queryEmbedding, topK);
 
             if (results.isEmpty()) {
                 return ResponseEntity.ok(Map.of(
                         "success", true,
-                        "answer", "未找到与您问题相关的内容，请尝试上传更多文档�?,
+                        "answer", "未找到与您问题相关的内容，请尝试上传更多文档。",
                         "references", List.of()
                 ));
             }
 
-            // 3. 将检索到的内容拼接为上下�?
+            // 3. 将检索到的内容拼接为上下文
             StringBuilder contextBuilder = new StringBuilder();
             for (int i = 0; i < results.size(); i++) {
                 DocumentChunk chunk = results.get(i);
@@ -173,22 +174,22 @@ public class DocumentController {
     }
 
     /**
-     * 向量相似度搜�?
+     * 向量相似度搜索
      */
     @Operation(
             summary = "向量搜索",
-            description = "根据查询文本的语义，在已上传的文档分块中检索最相似的结果，返回余弦距离和相似度�?
+            description = "根据查询文本的语义，在已上传的文档分块中检索最相似的结果，返回余弦距离和相似度。"
     )
     @GetMapping("/search")
     public ResponseEntity<Map<String, Object>> search(
             @Parameter(description = "搜索查询文本", required = true)
             @RequestParam("query") String query,
-            @Parameter(description = "返回结果数量，默�?")
+            @Parameter(description = "返回结果数量，默认5")
             @RequestParam(value = "topK", defaultValue = "5") int topK) {
         try {
             log.info("开始搜索，查询: {}，topK: {}", query, topK);
 
-            // 1. 将查询文本转为向�?
+            // 1. 将查询文本转为向量
             float[] queryEmbedding = embeddingService.embedText(query);
 
             // 2. 执行向量搜索
@@ -200,7 +201,7 @@ public class DocumentController {
                         DocumentChunk chunk = results.get(i);
                         Map<String, Object> item = new LinkedHashMap<>();
                         item.put("rank", i + 1);                          // 排名序号
-                        item.put("fileName", chunk.getFileName());           // 文件�?
+                        item.put("fileName", chunk.getFileName());           // 文件名
                         item.put("chunkIndex", chunk.getChunkIndex());       // 分块序号
                         item.put("text", chunk.getChunkText());              // 分块文本内容
                         item.put("cosineDistance", chunk.getCosineDistance()); // 余弦距离，范围[0,2]，值越小越相似

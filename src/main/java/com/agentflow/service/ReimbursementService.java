@@ -12,10 +12,13 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 
 /**
- * LangGraph4j 报销流程工作流服务：执行报销审批多步骤处理流�? *
+ * LangGraph4j 报销流程工作流服务：执行报销审批多步骤处理流程
+ *
  * 每次请求通过 CompiledGraph.stream() 驱动报销工作流执行，
- * 收集每个节点的输出作为步骤结果返回给前端展示�? * 审批节点（部门审批、财务审核）可能�?LLM 判定为驳回，
- * 此时流程提前终止，不再执行后续节点�? */
+ * 收集每个节点的输出作为步骤结果返回给前端展示。
+ * 审批节点（部门审批、财务审核）可能被 LLM 判定为驳回，
+ * 此时流程提前终止，不再执行后续节点。
+ */
 @Service
 public class ReimbursementService {
 
@@ -40,11 +43,13 @@ public class ReimbursementService {
     }
 
     /**
-     * 处理报销申请，执�?LangGraph4j 报销工作�?     *
+     * 处理报销申请，执行 LangGraph4j 报销工作流
+     *
      * @param reimbursementRequest 用户输入的报销申请信息
-     * @return 包含最终结果和各步骤执行信息的结构化响�?     */
+     * @return 包含最终结果和各步骤执行信息的结构化响应
+     */
     public Map<String, Object> process(String reimbursementRequest) {
-        log.info("报销流程工作流开始处�? {}", reimbursementRequest);
+        log.info("报销流程工作流开始处理: {}", reimbursementRequest);
         long startTime = System.currentTimeMillis();
 
         try {
@@ -53,20 +58,23 @@ public class ReimbursementService {
                     "messages", UserMessage.from(reimbursementRequest)
             );
 
-            // 执行工作流，收集每个节点的输�?            List<Map<String, Object>> steps = new ArrayList<>();
+            // 执行工作流，收集每个节点的输出
+            List<Map<String, Object>> steps = new ArrayList<>();
             boolean rejected = false;
 
             for (var step : reimbursementWorkflow.stream(inputs)) {
                 String nodeName = step.node();
                 String stepLabel = STEP_LABELS.getOrDefault(nodeName, nodeName);
 
-                // 从节点输出状态中提取最新消息作为该步骤的输�?                String stepOutput = extractLastAiMessage(step.state());
+                // 从节点输出状态中提取最新消息作为该步骤的输出
+                String stepOutput = extractLastAiMessage(step.state());
 
-                // 检查审批节点是否驳�?                String status = "completed";
+                // 检查审批节点是否驳回
+                String status = "completed";
                 if (APPROVAL_NODES.contains(nodeName) && isRejected(stepOutput)) {
                     status = "rejected";
                     rejected = true;
-                    log.info("报销流程节点 [{}] 审批驳回，流程终�?, stepLabel);
+                    log.info("报销流程节点 [{}] 审批驳回，流程终止", stepLabel);
                 }
 
                 steps.add(Map.of(
@@ -76,18 +84,20 @@ public class ReimbursementService {
                         "status", status
                 ));
 
-                log.info("报销流程节点 [{}] 执行完成，状�? {}", stepLabel, status);
+                log.info("报销流程节点 [{}] 执行完成，状态: {}", stepLabel, status);
 
-                // 如果当前节点驳回，不再继续处理后续节�?                if (rejected) {
+                // 如果当前节点驳回，不再继续处理后续节点
+                if (rejected) {
                     break;
                 }
             }
 
-            // 最终结果来自最后一个已执行节点的输�?            String finalResult = steps.isEmpty() ? "工作流未产生输出"
+            // 最终结果来自最后一个已执行节点的输出
+            String finalResult = steps.isEmpty() ? "工作流未产生输出"
                     : (String) steps.get(steps.size() - 1).get("output");
 
             long elapsed = System.currentTimeMillis() - startTime;
-            log.info("报销流程工作流处理完成，�?{} 个步骤，耗时 {}ms，是否驳�? {}", steps.size(), elapsed, rejected);
+            log.info("报销流程工作流处理完成，共 {} 个步骤，耗时 {}ms，是否驳回: {}", steps.size(), elapsed, rejected);
 
             return Map.of(
                     "success", true,
@@ -97,16 +107,18 @@ public class ReimbursementService {
             );
 
         } catch (Exception e) {
-            log.error("报销流程工作流执行失�?, e);
+            log.error("报销流程工作流执行失败", e);
             return Map.of(
                     "success", false,
-                    "message", "工作流执行失�? " + e.getMessage()
+                    "message", "工作流执行失败: " + e.getMessage()
             );
         }
     }
 
     /**
-     * 判断审批结果是否为驳�?     * 检查输出文本中是否包含"驳回"关键�?     */
+     * 判断审批结果是否为驳回
+     * 检查输出文本中是否包含"驳回"关键词
+     */
     private boolean isRejected(String output) {
         if (output == null || output.isEmpty()) {
             return false;
@@ -115,7 +127,8 @@ public class ReimbursementService {
     }
 
     /**
-     * �?MessagesState 中提取最后一�?AiMessage 的文本内�?     */
+     * 从 MessagesState 中提取最后一条 AiMessage 的文本内容
+     */
     private String extractLastAiMessage(MessagesState<Object> state) {
         try {
             var messages = state.messages();
