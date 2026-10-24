@@ -13,8 +13,9 @@ AgentFlow 是一个支持**文件上传与嵌入**的向量搜索服务，同时
 3. **聊天机器人**：基于 DeepSeek 模型的多轮对话，支持 SmartToolProvider 动态工具加载与 Tool 工具调用（天气、经纬度、节假日、本地命令行执行）
 4. **智能体工作流**：基于 LangGraph4j 实现多种工作流模式的 Demo 演示（知识助手、报销审批、圆桌讨论、Plan-and-Execute、Reflection 反思迭代、Subagent 多 Agent 协作、Fan-Out 并发多 Agent、Agent Loop 智能体循环）
 5. **知识图谱 3.0**：文档上传后自动抽取知识三元组（实体 + 关系），写入知识图谱，支持按文件查询图谱
-6. **向量存储双后端**：通过 `ChunkVectorRepository` 抽象层支持 PostgreSQL(pgvector) 和 Milvus 两种向量存储后端，由配置切换
-7. **前端界面**：内置单页应用（index.html），提供可视化的交互体验
+6. **商品查询（Text-to-SQL）**：自然语言转 SQL 查询商品销售数据，支持分页、SQL 校验与安全控制
+7. **向量存储双后端**：通过 `ChunkVectorRepository` 抽象层支持 PostgreSQL(pgvector) 和 Milvus 两种向量存储后端，由配置切换
+8. **前端界面**：内置单页应用（index.html），提供可视化的交互体验
 
 ---
 
@@ -77,6 +78,7 @@ agentflow/
 │   │   ├── LangGraphController.java
 │   │   ├── MultiAgentController.java
 │   │   ├── PlanExecuteController.java
+│   │   ├── ProductController.java          # 商品查询（Text-to-SQL）控制器
 │   │   ├── ReflectionController.java
 │   │   ├── ReimbursementController.java
 │   │   └── SubagentController.java
@@ -85,7 +87,8 @@ agentflow/
 │   │   ├── DocumentChunk.java
 │   │   ├── ExtractedTriple.java            # LLM 抽取的知识三元组
 │   │   ├── KgEntity.java                   # 知识图谱实体
-│   │   └── KgRelation.java                 # 知识图谱关系
+│   │   ├── KgRelation.java                 # 知识图谱关系
+│   │   └── ProductSales.java               # 商品销售实体
 │   ├── service/                            # 服务层
 │   │   ├── AgentLoopService.java
 │   │   ├── ChatService.java
@@ -105,6 +108,7 @@ agentflow/
 │   │   ├── MultiAgentService.java
 │   │   ├── PlanExecuteService.java
 │   │   ├── PostgresChunkVectorRepository.java # PostgreSQL 向量仓储实现
+│   │   ├── ProductQueryService.java        # 商品查询服务（Text-to-SQL）
 │   │   ├── ReflectionService.java
 │   │   ├── ReimbursementService.java
 │   │   ├── SubagentService.java
@@ -121,6 +125,7 @@ agentflow/
 │   ├── META-INF/spring.factories           # 注册 EnvironmentPostProcessor
 │   ├── static/index.html                   # 前端页面
 │   ├── application.yml                     # 应用配置
+│   ├── product.sql                         # 商品销售表初始化脚本
 │   └── schema.sql                          # 数据库初始化脚本
 ├── samples/
 │   └── knowledge-graph-demo.txt            # 知识图谱测试样例文档
@@ -153,7 +158,7 @@ agentflow/
     <description>Vector search service with file upload and embedding</description>
 
     <properties>
-        <java.version>17</java.version>
+        <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-ai.version>1.1.7</spring-ai.version>
         <pdfbox.version>3.0.3</pdfbox.version>
@@ -527,6 +532,50 @@ COMMENT ON COLUMN kg_relation.file_name IS '来源文件名';
 CREATE INDEX IF NOT EXISTS idx_kg_relation_file_name ON kg_relation (file_name);
 CREATE INDEX IF NOT EXISTS idx_kg_relation_from ON kg_relation (from_entity_id);
 CREATE INDEX IF NOT EXISTS idx_kg_relation_to ON kg_relation (to_entity_id);
+
+-- 商品销售明细表（Text-to-SQL）
+CREATE TABLE IF NOT EXISTS product_sales (
+    id BIGSERIAL PRIMARY KEY,
+    order_no VARCHAR(32) NOT NULL,
+    product_id VARCHAR(16) NOT NULL,
+    product_name VARCHAR(64) NOT NULL,
+    category VARCHAR(32) NOT NULL,
+    unit_price DECIMAL(10,2) NOT NULL,
+    quantity INTEGER NOT NULL,
+    discount DECIMAL(3,2) NOT NULL DEFAULT 1.00,
+    total_amount DECIMAL(12,2) NOT NULL,
+    customer_name VARCHAR(32) DEFAULT NULL,
+    region VARCHAR(32) DEFAULT NULL,
+    payment_method VARCHAR(16) DEFAULT NULL,
+    order_status VARCHAR(16) NOT NULL DEFAULT '待付款',
+    sale_date DATE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_product_sales_order_no UNIQUE (order_no)
+);
+
+COMMENT ON TABLE product_sales IS '商品销售明细表';
+COMMENT ON COLUMN product_sales.id IS '主键ID，自增';
+COMMENT ON COLUMN product_sales.order_no IS '订单编号';
+COMMENT ON COLUMN product_sales.product_id IS '商品编码';
+COMMENT ON COLUMN product_sales.product_name IS '商品名称';
+COMMENT ON COLUMN product_sales.category IS '商品类别';
+COMMENT ON COLUMN product_sales.unit_price IS '商品单价(元)';
+COMMENT ON COLUMN product_sales.quantity IS '购买数量';
+COMMENT ON COLUMN product_sales.discount IS '折扣率(1.00=无折扣)';
+COMMENT ON COLUMN product_sales.total_amount IS '订单金额=单价*数量*折扣';
+COMMENT ON COLUMN product_sales.customer_name IS '客户姓名';
+COMMENT ON COLUMN product_sales.region IS '销售区域';
+COMMENT ON COLUMN product_sales.payment_method IS '支付方式';
+COMMENT ON COLUMN product_sales.order_status IS '订单状态';
+COMMENT ON COLUMN product_sales.sale_date IS '销售日期';
+COMMENT ON COLUMN product_sales.created_at IS '创建时间';
+COMMENT ON COLUMN product_sales.updated_at IS '更新时间';
+
+CREATE INDEX IF NOT EXISTS idx_product_sales_product_id ON product_sales (product_id);
+CREATE INDEX IF NOT EXISTS idx_product_sales_category ON product_sales (category);
+CREATE INDEX IF NOT EXISTS idx_product_sales_sale_date ON product_sales (sale_date);
+CREATE INDEX IF NOT EXISTS idx_product_sales_region ON product_sales (region);
 ```
 
 ### 6.2 关键设计要点
@@ -655,7 +704,36 @@ CREATE INDEX IF NOT EXISTS idx_kg_relation_to ON kg_relation (to_entity_id);
 - Collection 字段：id(Int64 PK)、file_name(VarChar)、chunk_index(Int32)、chunk_text(VarChar)、embedding(FloatVector)、created_at(Int64)
 - 索引类型：COSINE 度量
 
-### 7.11 知识图谱 3.0
+### 7.11 商品查询模块（Text-to-SQL）
+
+项目提供自然语言查询商品销售数据的功能，通过 DeepSeek 将用户自然语言转换为 SQL 并执行分页查询：
+
+**核心组件**：
+- `ProductController`：REST 接口层，接收自然语言或已有 SQL，返回分页查询结果
+- `ProductQueryService`：业务逻辑层，调用 DeepSeek 生成 SQL，执行 SQL 校验与分页查询
+- `ProductSales`：数据模型，对应 `product_sales` 表
+
+**Text-to-SQL 流程**：
+1. 用户输入自然语言问题（如"查询北京地区已完成的手机数码订单"）
+2. `ProductQueryService` 构造 system prompt（包含表结构和规则）+ user message
+3. 调用 DeepSeek `/v1/chat/completions` 接口生成 SQL
+4. SQL 校验：去除 Markdown 代码块、拒绝写操作关键字（INSERT/UPDATE/DELETE/DROP 等）、仅允许单条 SELECT
+5. 去除模型可能附带的 LIMIT/OFFSET，由服务端统一分页
+6. 执行 COUNT 查询获取总条数，再执行分页查询获取数据
+7. 返回基础 SQL、分页 SQL、当前页数据、总条数、page、size
+
+**SQL 安全控制**：
+- 正则匹配禁止的写操作关键字（INSERT/UPDATE/DELETE/DROP/ALTER/TRUNCATE/CREATE/GRANT/REVOKE/COPY/EXECUTE/CALL/MERGE/REPLACE/ATTACH/DETACH）
+- 禁止多条 SQL（检查分号）
+- 仅允许 SELECT 或 WITH...SELECT 语句
+- temperature 设置为 0.1 降低随机性，提高 SQL 生成准确性
+
+**分页优化**：
+- 首次查询传入 `question`，系统生成 SQL 并执行分页查询
+- 翻页时可传入 `sql`（复用已生成的 SQL），避免重复调用大模型
+- 默认 page=1, size=10，最大 size=100
+
+### 7.12 知识图谱 3.0
 
 文档上传后自动抽取知识三元组，构建知识图谱：
 
@@ -736,6 +814,62 @@ CREATE INDEX IF NOT EXISTS idx_kg_relation_to ON kg_relation (to_entity_id);
 | POST | `/api/documents/v3/upload` | 上传文档并构建知识图谱（抽取三元组） |
 | GET | `/api/documents/v3/graph` | 按文件名查询知识图谱（实体 + 关系） |
 
+### 8.7 商品查询（Text-to-SQL）- `/api/product`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/product/query` | 自然语言 / 已有 SQL 分页查询商品销售数据 |
+
+**请求体示例**：
+
+```json
+// 首次查询（传入自然语言）
+{
+  "question": "查询北京地区已完成的手机数码订单",
+  "page": 1,
+  "size": 10
+}
+
+// 翻页查询（复用已生成的 SQL）
+{
+  "sql": "SELECT * FROM product_sales WHERE region = '北京' AND order_status = '已完成'",
+  "page": 2,
+  "size": 10
+}
+```
+
+**响应示例**：
+
+```json
+{
+  "success": true,
+  "question": "查询北京地区已完成的手机数码订单",
+  "sql": "SELECT * FROM product_sales WHERE region = '北京' AND order_status = '已完成' AND category = '手机数码'",
+  "pageSql": "SELECT * FROM product_sales WHERE region = '北京' AND order_status = '已完成' AND category = '手机数码' LIMIT 10 OFFSET 0",
+  "data": [
+    {
+      "id": 1,
+      "order_no": "SO20240501001",
+      "product_id": "P01",
+      "product_name": "iPhone 15 Pro",
+      "category": "手机数码",
+      "unit_price": 7999.00,
+      "quantity": 2,
+      "discount": 1.00,
+      "total_amount": 15998.00,
+      "customer_name": "张伟",
+      "region": "北京",
+      "payment_method": "微信支付",
+      "order_status": "已完成",
+      "sale_date": "2024-05-01"
+    }
+  ],
+  "total": 5,
+  "page": 1,
+  "size": 10
+}
+```
+
 ---
 
 ## 九、数据模型
@@ -806,12 +940,35 @@ public class KgRelation {
 }
 ```
 
+### 9.6 ProductSales
+
+```java
+public class ProductSales {
+    private Long id;
+    private String orderNo;          // 订单编号
+    private String productId;        // 商品编码
+    private String productName;      // 商品名称
+    private String category;         // 商品类别：手机数码/家用电器/运动户外/食品饮料/美妆个护/电脑办公
+    private BigDecimal unitPrice;    // 商品单价(元)
+    private Integer quantity;        // 购买数量
+    private BigDecimal discount;     // 折扣率(1.00=无折扣)
+    private BigDecimal totalAmount;  // 订单金额=单价*数量*折扣
+    private String customerName;     // 客户姓名
+    private String region;           // 销售区域：北京/上海/广州/深圳/杭州/成都/武汉/南京/西安/重庆
+    private String paymentMethod;    // 支付方式：微信支付/支付宝/银行卡/信用卡
+    private String orderStatus;      // 订单状态：待付款/已发货/已完成/已取消
+    private LocalDate saleDate;      // 销售日期
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+}
+```
+
 ---
 
 ## 十、实现步骤建议
 
 1. **初始化项目**：创建 Spring Boot 项目，配置 pom.xml 依赖
-2. **数据库层**：编写 schema.sql，实现 DatabaseAvailabilityEnvironmentPostProcessor 和 DatabaseConfig
+2. **数据库层**：编写 schema.sql 和 product.sql，实现 DatabaseAvailabilityEnvironmentPostProcessor 和 DatabaseConfig
 3. **Embedding 服务**：分别实现 Spring AI 和 LangChain4j 两套 Embedding 体系
 4. **文本提取**：实现 TextExtractionService（支持 PDF/DOCX/TXT，按标题分块）
 5. **向量存储抽象层**：实现 ChunkVectorRepository 接口及其 Postgres/Milvus 两个实现类
@@ -821,9 +978,10 @@ public class KgRelation {
 9. **工具类**：实现 WeatherTool、GeocodingTool、HolidayTool、CommandLineTool、ExternalApiFetcher
 10. **LangGraph4j 工作流**：逐个实现 8 个工作流配置和对应的 Service/Controller
 11. **知识图谱 3.0**：实现 KnowledgeExtractionService、KnowledgeGraphIngestService、KnowledgeGraphStore、EntityResolutionService、DocumentV3Controller
-12. **前端页面**：实现 index.html 单页应用
-13. **RestClient 配置**：处理 application/octet-stream 兼容问题
-14. **重试机制**：配置 RetryConfig 和 ExternalApiFetcher 的 @Retryable
+12. **商品查询（Text-to-SQL）**：实现 ProductQueryService、ProductController、ProductSales 模型，构造 system prompt 引导 DeepSeek 生成 SQL，实现 SQL 安全校验与分页查询
+13. **前端页面**：实现 index.html 单页应用
+14. **RestClient 配置**：处理 application/octet-stream 兼容问题
+15. **重试机制**：配置 RetryConfig 和 ExternalApiFetcher 的 @Retryable
 
 ---
 
@@ -841,12 +999,15 @@ public class KgRelation {
 10. **LLM 改写输出兜底**：查询改写结果需要程序化兜底截断，防止异常输出
 11. **知识图谱 upsert 幂等**：`kg_entity` 使用 `(canonical_name, type)` 唯一约束，`kg_relation` 使用 `(from_entity_id, predicate, to_entity_id, chunk_id)` 唯一约束，重复导入不会产生重复数据
 12. **ChunkVectorRepository 条件注册**：Postgres 实现需要 `vector-store.type=postgres` 且 `database.available=true`；Milvus 实现需要 `vector-store.type=milvus`，服务层通过 `@ConditionalOnBean` 依赖仓储层
+13. **Text-to-SQL 安全控制**：必须对 LLM 生成的 SQL 进行严格校验，包括：拒绝写操作关键字、禁止多条 SQL、仅允许 SELECT/WITH...SELECT、去除 Markdown 代码块、去除模型附带的 LIMIT/OFFSET
+14. **Text-to-SQL 分页优化**：翻页时允许传入已生成的 SQL 复用，避免重复调用大模型，降低延迟和成本
+15. **DeepSeek temperature 设置**：Text-to-SQL 场景建议将 temperature 设置为 0.1，降低随机性，提高 SQL 生成准确性
 
 ---
 
 ## 十二、运行环境
 
-- **JDK**：17+
+- **JDK**：21
 - **数据库**：PostgreSQL（需安装 pgvector 扩展）
 - **端口**：8081
 - **前端页面**：`http://localhost:8081/`

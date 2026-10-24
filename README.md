@@ -9,6 +9,7 @@ AgentFlow 是一个支持**文件上传与嵌入**的向量搜索服务，同时
 - **智能问答**：基于 RAG（检索增强生成）架构，向量检索 + LLM 总结回答
 - **聊天机器人**：基于 DeepSeek 模型的多轮对话，支持 SmartToolProvider 动态工具加载与 Tool 工具调用（天气、经纬度、节假日、本地命令行执行）
 - **知识图谱 3.0**：文档上传后自动抽取知识三元组（实体 + 关系），写入知识图谱，支持按文件查询图谱
+- **商品查询（Text-to-SQL）**：自然语言转 SQL 查询商品销售数据，支持分页、SQL 校验与安全控制
 - **向量存储双后端**：通过 `ChunkVectorRepository` 抽象层支持 PostgreSQL(pgvector) 和 Milvus 两种向量存储后端，由配置切换
 - **智能体工作流**：基于 LangGraph4j 实现多种工作流模式的 Demo 演示
 - **前端界面**：内置单页应用（index.html），提供可视化的交互体验
@@ -69,6 +70,7 @@ src/main/java/com/agentflow/
 │   ├── LangGraphController.java     # LangGraph 知识助手接口
 │   ├── MultiAgentController.java    # Multi Agent 圆桌讨论接口
 │   ├── PlanExecuteController.java   # Plan-and-Execute 工作流接口
+│   ├── ProductController.java       # 商品查询接口（Text-to-SQL）
 │   ├── ReflectionController.java    # Reflection 反思迭代接口
 │   ├── ReimbursementController.java # 报销流程接口
 │   └── SubagentController.java      # Subagent 多 Agent 协作接口
@@ -77,7 +79,8 @@ src/main/java/com/agentflow/
 │   ├── DocumentChunk.java           # 文档分块模型
 │   ├── ExtractedTriple.java         # LLM 抽取的知识三元组
 │   ├── KgEntity.java                # 知识图谱实体
-│   └── KgRelation.java              # 知识图谱关系
+│   ├── KgRelation.java              # 知识图谱关系
+│   └── ProductSales.java            # 商品销售实体
 ├── service/                    # 服务层
 │   ├── AgentLoopService.java        # Agent Loop 服务
 │   ├── ChatService.java             # 对话总结与三元组抽取服务
@@ -97,6 +100,7 @@ src/main/java/com/agentflow/
 │   ├── MultiAgentService.java       # Multi Agent 服务
 │   ├── PlanExecuteService.java      # Plan-and-Execute 服务
 │   ├── PostgresChunkVectorRepository.java # PostgreSQL 向量仓储实现
+│   ├── ProductQueryService.java     # 商品查询服务（Text-to-SQL）
 │   ├── ReflectionService.java       # Reflection 服务
 │   ├── ReimbursementService.java    # 报销流程服务
 │   ├── SubagentService.java         # Subagent 服务
@@ -116,7 +120,7 @@ src/main/java/com/agentflow/
 
 ## 运行环境
 
-- **JDK**：17+
+- **JDK**：21
 - **数据库**：PostgreSQL（需安装 pgvector 扩展）
 - **端口**：8081
 - **前端页面**：`http://localhost:8081/`
@@ -131,6 +135,9 @@ src/main/java/com/agentflow/
 - `kg_entity` / `kg_relation`：知识图谱实体与关系表
 
 前两张表结构相同，均包含 1024 维向量字段，并建立 IVFFlat 余弦距离索引。
+
+执行 `src/main/resources/product.sql` 创建商品销售表并插入测试数据：
+- `product_sales`：商品销售明细表（用于 Text-to-SQL 功能）
 
 > 当使用 Milvus 作为向量存储后端时（`vector-store.type=milvus`），Milvus 会自动创建对应的 Collection，无需手动执行 schema.sql 中的向量表部分。但 `kg_entity` 和 `kg_relation` 表仍需在 PostgreSQL 中创建。
 
@@ -738,6 +745,87 @@ src/main/java/com/agentflow/
 
 ---
 
+### 13. 商品查询（Text-to-SQL）
+
+> 控制器：`ProductController` | 路径前缀：`/api/product`
+> 
+> 仅在 `database.available=true` 时注册
+
+#### 13.1 自然语言商品分页查询
+
+- **URL**：`POST /api/product/query`
+- **描述**：将用户输入的自然语言转为 SQL 并分页查询 `product_sales` 表。翻页时可传入已生成的 SQL 复用，避免重复调用大模型。
+- **Content-Type**：`application/json`
+- **请求体**：
+
+```json
+// 首次查询（传入自然语言）
+{
+  "question": "查询北京地区已完成的手机数码订单",
+  "page": 1,
+  "size": 10
+}
+
+// 翻页查询（复用已生成的 SQL）
+{
+  "sql": "SELECT * FROM product_sales WHERE region = '北京' AND order_status = '已完成'",
+  "page": 2,
+  "size": 10
+}
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| question | String | 否 | 自然语言查询问题（首次查询时必填，翻页时可空） |
+| sql | String | 否 | 已生成的基础 SQL（翻页时传入，避免重复调用大模型） |
+| page | Integer | 否 | 页码，从 1 开始，默认 1 |
+| size | Integer | 否 | 每页条数，默认 10，最大 100 |
+
+- **响应示例**：
+
+```json
+{
+  "success": true,
+  "question": "查询北京地区已完成的手机数码订单",
+  "sql": "SELECT * FROM product_sales WHERE region = '北京' AND order_status = '已完成' AND category = '手机数码'",
+  "pageSql": "SELECT * FROM product_sales WHERE region = '北京' AND order_status = '已完成' AND category = '手机数码' LIMIT 10 OFFSET 0",
+  "data": [
+    {
+      "id": 1,
+      "order_no": "SO20240501001",
+      "product_id": "P01",
+      "product_name": "iPhone 15 Pro",
+      "category": "手机数码",
+      "unit_price": 7999.00,
+      "quantity": 2,
+      "discount": 1.00,
+      "total_amount": 15998.00,
+      "customer_name": "张伟",
+      "region": "北京",
+      "payment_method": "微信支付",
+      "order_status": "已完成",
+      "sale_date": "2024-05-01",
+      "created_at": "2024-05-01T10:00:00",
+      "updated_at": "2024-05-01T10:00:00"
+    }
+  ],
+  "total": 5,
+  "page": 1,
+  "size": 10
+}
+```
+
+- **错误响应示例**：
+
+```json
+{
+  "success": false,
+  "message": "SQL 包含禁止的写操作关键字: DELETE FROM product_sales"
+}
+```
+
+---
+
 ## 数据库设计
 
 ### document_chunk 表（Spring AI 向量存储）
@@ -800,6 +888,33 @@ src/main/java/com/agentflow/
 
 每个 Collection 字段：id(Int64 PK, autoID)、file_name(VarChar)、chunk_index(Int32)、chunk_text(VarChar)、embedding(FloatVector, 1024维)、created_at(Int64)。索引类型：COSINE 度量。
 
+### product_sales 表（商品销售明细）
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGSERIAL | 主键 ID，自增 |
+| order_no | VARCHAR(32) | 订单编号，唯一 |
+| product_id | VARCHAR(16) | 商品编码（P01~P12） |
+| product_name | VARCHAR(64) | 商品名称 |
+| category | VARCHAR(32) | 商品类别：手机数码/家用电器/运动户外/食品饮料/美妆个护/电脑办公 |
+| unit_price | DECIMAL(10,2) | 商品单价(元) |
+| quantity | INTEGER | 购买数量 |
+| discount | DECIMAL(3,2) | 折扣率(1.00=无折扣) |
+| total_amount | DECIMAL(12,2) | 订单金额=单价*数量*折扣 |
+| customer_name | VARCHAR(32) | 客户姓名 |
+| region | VARCHAR(32) | 销售区域：北京/上海/广州/深圳/杭州/成都/武汉/南京/西安/重庆 |
+| payment_method | VARCHAR(16) | 支付方式：微信支付/支付宝/银行卡/信用卡 |
+| order_status | VARCHAR(16) | 订单状态：待付款/已发货/已完成/已取消 |
+| sale_date | DATE | 销售日期 |
+| created_at | TIMESTAMP | 创建时间 |
+| updated_at | TIMESTAMP | 更新时间 |
+
+唯一约束：`(order_no)`
+
+索引：`product_id`、`category`、`sale_date`、`region`
+
+测试数据：`product.sql` 包含 100 条商品销售记录，涵盖 12 种商品（P01~P12）、6 个类别、10 个区域、4 种支付方式、4 种订单状态。
+
 ---
 
 ## 配置说明
@@ -849,13 +964,16 @@ vector-store:
 
 ```bash
 # 1. 确保 PostgreSQL 已启动并安装 pgvector 扩展
-# 2. 执行数据库初始化脚本
+# 2. 执行数据库初始化脚本（向量存储和知识图谱）
 psql -h localhost -U postgres -d interview_guide -f src/main/resources/schema.sql
 
-# 3. 启动应用
+# 3. 执行商品销售表初始化脚本（Text-to-SQL 功能）
+psql -h localhost -U postgres -d interview_guide -f src/main/resources/product.sql
+
+# 4. 启动应用
 mvn spring-boot:run
 
-# 4. 访问
+# 5. 访问
 # 前端页面：http://localhost:8081/
 # Swagger UI：http://localhost:8081/swagger-ui.html
 ```

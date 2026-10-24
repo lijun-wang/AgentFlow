@@ -2825,6 +2825,193 @@
             from { opacity: 0; transform: translateY(6px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        /* 商品查询模块 */
+        .product-hint {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+        .product-examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .product-example-chip {
+            padding: 6px 12px;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            font-size: 12px;
+            color: #555;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .product-example-chip:hover {
+            background: #eef2ff;
+            border-color: #c7d2fe;
+            color: #4f46e5;
+        }
+        .product-input-group {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        .product-input-group textarea {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #d9d9d9;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            resize: vertical;
+            min-height: 72px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        .product-input-group textarea:focus { border-color: #667eea; }
+        .product-sql-box {
+            display: none;
+            margin-top: 20px;
+            background: #1e293b;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .product-sql-box.show { display: block; }
+        .product-sql-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 16px;
+            background: #0f172a;
+            color: #94a3b8;
+            font-size: 12px;
+        }
+        .product-sql-body {
+            padding: 16px;
+            color: #e2e8f0;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+            margin: 0;
+        }
+        .product-meta {
+            display: none;
+            margin-top: 12px;
+            font-size: 13px;
+            color: #666;
+        }
+        .product-meta.show { display: block; }
+        .product-table-wrap {
+            display: none;
+            margin-top: 16px;
+            overflow-x: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+        .product-table-wrap.show { display: block; }
+        .product-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            min-width: 900px;
+        }
+        .product-table th {
+            background: #f8fafc;
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #475569;
+            border-bottom: 1px solid #e5e7eb;
+            white-space: nowrap;
+        }
+        .product-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155;
+            white-space: nowrap;
+        }
+        .product-table tr:hover td { background: #f8fafc; }
+        .product-empty {
+            display: none;
+            margin-top: 16px;
+            padding: 24px;
+            text-align: center;
+            color: #999;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+        .product-empty.show { display: block; }
+        .product-message {
+            display: none;
+            margin-top: 16px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .product-message.show { display: block; }
+        .product-message.error { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+        .product-message.info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+        .product-pagination {
+            display: none;
+            margin-top: 16px;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .product-pagination.show { display: flex; }
+        .product-page-info { font-size: 13px; color: #666; }
+        .product-page-btns {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .product-page-btn {
+            min-width: 32px;
+            height: 32px;
+            padding: 0 10px;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            background: white;
+            color: #555;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .product-page-btn:hover:not(:disabled) {
+            border-color: #667eea;
+            color: #667eea;
+        }
+        .product-page-btn.active {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+        }
+        .product-page-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+        .product-page-size {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #666;
+        }
+        .product-page-size select {
+            padding: 4px 8px;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
+            background: white;
+        }
     </style>
 </head>
 <body>
@@ -2850,6 +3037,9 @@
             </button>
             <button class="tab-btn" data-tab="reflect">
                 <span class="tab-icon">&#129504;</span> 反思与规划
+            </button>
+            <button class="tab-btn" data-tab="product">
+                <span class="tab-icon">&#128722;</span> 商品查询
             </button>
         </div>
 
@@ -3213,6 +3403,54 @@
         </div>
 
         </div><!-- /tab-reflect -->
+
+        <!-- ========== Tab: 商品查询 ========== -->
+        <div class="tab-panel" id="tab-product">
+            <div class="card">
+                <h2><span class="icon">&#128722;</span> 商品销售查询 <span class="v2-badge">Text-to-SQL</span></h2>
+                <p class="product-hint">用自然语言描述查询条件，系统会自动生成 SQL 并查询 product_sales 销售明细。</p>
+                <div class="product-examples" id="productExamples">
+                    <span class="product-example-chip" data-q="查询北京地区已完成的手机数码订单">北京已完成手机数码</span>
+                    <span class="product-example-chip" data-q="统计各类别的销售总金额，按金额从高到低排序">类别销售金额统计</span>
+                    <span class="product-example-chip" data-q="查询单价超过 5000 元的订单">单价超过 5000</span>
+                    <span class="product-example-chip" data-q="查询 2024 年 5 月使用微信支付的订单">5月微信支付订单</span>
+                    <span class="product-example-chip" data-q="查询折扣低于 1 的订单，按折扣升序">有折扣的订单</span>
+                </div>
+                <div class="product-input-group">
+                    <textarea id="productInput" placeholder="例如：查询上海地区家用电器类、订单状态为已完成的销售记录..." rows="3"></textarea>
+                    <button class="btn btn-search" id="productQueryBtn">查询</button>
+                </div>
+                <div class="product-message" id="productMessage"></div>
+                <div class="product-sql-box" id="productSqlBox">
+                    <div class="product-sql-header">
+                        <span>生成的 SQL</span>
+                        <span id="productSqlStatus"></span>
+                    </div>
+                    <pre class="product-sql-body" id="productSqlBody"></pre>
+                </div>
+                <div class="product-meta" id="productMeta"></div>
+                <div class="product-empty" id="productEmpty">未查询到匹配的商品记录</div>
+                <div class="product-table-wrap" id="productTableWrap">
+                    <table class="product-table" id="productTable">
+                        <thead id="productTableHead"></thead>
+                        <tbody id="productTableBody"></tbody>
+                    </table>
+                </div>
+                <div class="product-pagination" id="productPagination">
+                    <div class="product-page-info" id="productPageInfo"></div>
+                    <div class="product-page-btns" id="productPageBtns"></div>
+                    <div class="product-page-size">
+                        <span>每页</span>
+                        <select id="productPageSize">
+                            <option value="10" selected>10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                        </select>
+                        <span>条</span>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /tab-product -->
     </div>
 
     <script>
@@ -5900,6 +6138,250 @@
                 e.preventDefault();
                 sendFoRequest();
             }
+        });
+
+        // ========== 商品查询 ==========
+        const productInput = document.getElementById('productInput');
+        const productQueryBtn = document.getElementById('productQueryBtn');
+        const productMessage = document.getElementById('productMessage');
+        const productSqlBox = document.getElementById('productSqlBox');
+        const productSqlBody = document.getElementById('productSqlBody');
+        const productSqlStatus = document.getElementById('productSqlStatus');
+        const productMeta = document.getElementById('productMeta');
+        const productEmpty = document.getElementById('productEmpty');
+        const productTableWrap = document.getElementById('productTableWrap');
+        const productTableHead = document.getElementById('productTableHead');
+        const productTableBody = document.getElementById('productTableBody');
+        const productPagination = document.getElementById('productPagination');
+        const productPageInfo = document.getElementById('productPageInfo');
+        const productPageBtns = document.getElementById('productPageBtns');
+        const productPageSizeSelect = document.getElementById('productPageSize');
+
+        const PRODUCT_COLUMN_LABELS = {
+            id: 'ID',
+            order_no: '订单编号',
+            product_id: '商品编码',
+            product_name: '商品名称',
+            category: '类别',
+            unit_price: '单价',
+            quantity: '数量',
+            discount: '折扣',
+            total_amount: '金额',
+            customer_name: '客户',
+            region: '区域',
+            payment_method: '支付方式',
+            order_status: '状态',
+            sale_date: '销售日期',
+            created_at: '创建时间',
+            updated_at: '更新时间'
+        };
+
+        let productCachedSql = '';
+        let productPage = 1;
+        let productPageSize = 10;
+        let productTotal = 0;
+        let productLoading = false;
+
+        function resetProductResults() {
+            productMessage.className = 'product-message';
+            productMessage.textContent = '';
+            productSqlBox.classList.remove('show');
+            productMeta.classList.remove('show');
+            productEmpty.classList.remove('show');
+            productTableWrap.classList.remove('show');
+            productPagination.classList.remove('show');
+            productTableHead.innerHTML = '';
+            productTableBody.innerHTML = '';
+            productPageBtns.innerHTML = '';
+            productCachedSql = '';
+            productPage = 1;
+            productTotal = 0;
+        }
+
+        function showProductMessage(text, type) {
+            productMessage.textContent = text;
+            productMessage.className = 'product-message show ' + type;
+        }
+
+        function escapeHtml(text) {
+            if (text == null) return '';
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function formatProductCell(value) {
+            if (value == null) return '-';
+            if (typeof value === 'object') return escapeHtml(JSON.stringify(value));
+            return escapeHtml(value);
+        }
+
+        function getProductTotalPages() {
+            return Math.max(1, Math.ceil(productTotal / productPageSize));
+        }
+
+        function renderProductTable(rows) {
+            if (!rows || rows.length === 0) {
+                productTableWrap.classList.remove('show');
+                if (productTotal === 0) {
+                    productPagination.classList.remove('show');
+                    productEmpty.classList.add('show');
+                    productMeta.classList.remove('show');
+                } else {
+                    productEmpty.classList.remove('show');
+                    renderProductPagination();
+                }
+                return;
+            }
+
+            productEmpty.classList.remove('show');
+            const columns = Object.keys(rows[0]);
+            productTableHead.innerHTML = '<tr>' + columns.map(col =>
+                '<th>' + escapeHtml(PRODUCT_COLUMN_LABELS[col] || col) + '</th>'
+            ).join('') + '</tr>';
+            productTableBody.innerHTML = rows.map(row =>
+                '<tr>' + columns.map(col => '<td>' + formatProductCell(row[col]) + '</td>').join('') + '</tr>'
+            ).join('');
+            productTableWrap.classList.add('show');
+
+            const start = (productPage - 1) * productPageSize + 1;
+            const end = (productPage - 1) * productPageSize + rows.length;
+            productMeta.textContent = '共 ' + productTotal + ' 条记录，当前显示第 ' + start + '-' + end + ' 条';
+            productMeta.classList.add('show');
+            renderProductPagination();
+        }
+
+        function renderProductPagination() {
+            if (productTotal <= 0) {
+                productPagination.classList.remove('show');
+                return;
+            }
+            const totalPages = getProductTotalPages();
+            productPageInfo.textContent = '第 ' + productPage + ' / ' + totalPages + ' 页';
+
+            let btns = '';
+            btns += '<button class="product-page-btn" data-page="prev"' + (productPage <= 1 ? ' disabled' : '') + '>上一页</button>';
+            const maxButtons = 5;
+            let from = Math.max(1, productPage - Math.floor(maxButtons / 2));
+            let to = Math.min(totalPages, from + maxButtons - 1);
+            from = Math.max(1, to - maxButtons + 1);
+            for (let i = from; i <= to; i++) {
+                btns += '<button class="product-page-btn' + (i === productPage ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>';
+            }
+            btns += '<button class="product-page-btn" data-page="next"' + (productPage >= totalPages ? ' disabled' : '') + '>下一页</button>';
+            productPageBtns.innerHTML = btns;
+            productPagination.classList.add('show');
+        }
+
+        async function fetchProductPage(options) {
+            const { question, sql, page, size, isNewQuery } = options;
+            if (productLoading) return;
+            productLoading = true;
+            productQueryBtn.disabled = true;
+            if (isNewQuery) {
+                showProductMessage('正在分析并查询，请稍候...', 'info');
+            }
+
+            try {
+                const body = { page: page, size: size };
+                if (sql) body.sql = sql;
+                if (question) body.question = question;
+
+                const response = await fetch('/api/product/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const result = await response.json();
+
+                if (!result.success) {
+                    showProductMessage(result.message || '查询失败', 'error');
+                    if (result.sql) {
+                        productSqlBody.textContent = result.sql;
+                        productSqlBox.classList.add('show');
+                    }
+                    return;
+                }
+
+                productMessage.className = 'product-message';
+                productCachedSql = result.sql || sql || '';
+                productPage = result.page || page;
+                productPageSize = result.size || size;
+                productTotal = result.total || 0;
+                productPageSizeSelect.value = String(productPageSize);
+
+                productSqlBody.textContent = productCachedSql;
+                productSqlStatus.textContent = '已执行';
+                productSqlBox.classList.add('show');
+                renderProductTable(result.data || []);
+            } catch (error) {
+                showProductMessage('请求失败：' + error.message, 'error');
+            } finally {
+                productLoading = false;
+                productQueryBtn.disabled = false;
+            }
+        }
+
+        async function queryProduct() {
+            const question = productInput.value.trim();
+            if (!question) {
+                showProductMessage('请输入查询内容', 'error');
+                return;
+            }
+            resetProductResults();
+            await fetchProductPage({
+                question: question,
+                page: 1,
+                size: productPageSize,
+                isNewQuery: true
+            });
+        }
+
+        async function gotoProductPage(nextPage) {
+            if (!productCachedSql) return;
+            const totalPages = getProductTotalPages();
+            if (nextPage < 1 || nextPage > totalPages) return;
+            await fetchProductPage({
+                sql: productCachedSql,
+                page: nextPage,
+                size: productPageSize,
+                isNewQuery: false
+            });
+        }
+
+        productQueryBtn.addEventListener('click', queryProduct);
+        productInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                queryProduct();
+            }
+        });
+        productPageBtns.addEventListener('click', function(e) {
+            const btn = e.target.closest('.product-page-btn');
+            if (!btn || btn.disabled) return;
+            const action = btn.dataset.page;
+            const totalPages = getProductTotalPages();
+            let nextPage = productPage;
+            if (action === 'prev') nextPage = productPage - 1;
+            else if (action === 'next') nextPage = productPage + 1;
+            else nextPage = parseInt(action, 10) || 1;
+            if (nextPage >= 1 && nextPage <= totalPages && nextPage !== productPage) {
+                gotoProductPage(nextPage);
+            }
+        });
+        productPageSizeSelect.addEventListener('change', function() {
+            productPageSize = parseInt(productPageSizeSelect.value, 10) || 10;
+            if (productCachedSql) {
+                gotoProductPage(1);
+            }
+        });
+        document.querySelectorAll('.product-example-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                productInput.value = chip.dataset.q || chip.textContent;
+                productInput.focus();
+            });
         });
     </script>
 </body>
