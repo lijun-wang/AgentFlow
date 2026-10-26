@@ -16,10 +16,10 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
- * 商品查询服务：将自然语言转为 SQL，并在 product_sales 表上执行分页查询
+ * 商品查询服务：将自然语言转为 SQL，并在 MySQL product_sales 表上执行分页查询
  */
 @Service
-@ConditionalOnProperty(name = "database.available", havingValue = "true")
+@ConditionalOnProperty(name = "mysql.available", havingValue = "true")
 public class ProductQueryService {
 
     private static final Logger log = LoggerFactory.getLogger(ProductQueryService.class);
@@ -29,10 +29,10 @@ public class ProductQueryService {
     public static final int MAX_SIZE = 100;
 
     private static final String SCHEMA_PROMPT = """
-            你是 PostgreSQL 查询助手。根据用户的自然语言需求，生成针对 product_sales 表的只读 SQL。
+            你是 MySQL 8 查询助手。根据用户的自然语言需求，生成针对 product_sales 表的只读 SQL。
 
             表结构 product_sales（商品销售明细表）：
-            - id BIGSERIAL PRIMARY KEY  -- 主键
+            - id BIGINT AUTO_INCREMENT PRIMARY KEY  -- 主键
             - order_no VARCHAR(32) NOT NULL  -- 订单编号，唯一
             - product_id VARCHAR(16) NOT NULL  -- 商品编码，如 P01~P12
             - product_name VARCHAR(64) NOT NULL  -- 商品名称
@@ -54,8 +54,8 @@ public class ProductQueryService {
             2. 只能查询 product_sales 表，禁止 INSERT/UPDATE/DELETE/DROP/ALTER/TRUNCATE/CREATE 等写操作
             3. 禁止多语句、禁止分号后附加其他语句
             4. 不要添加 LIMIT 或 OFFSET，分页由系统统一处理
-            5. 字段名使用蛇形命名（与表结构一致）
-            6. 字符串比较注意中文枚举值与表中一致
+            5. 字段名使用蛇形命名（与表结构一致），使用标准 MySQL 语法（不要使用 PostgreSQL 特有语法如 ::、ILIKE、RETURNING）
+            6. 字符串比较注意中文枚举值与表中一致；模糊匹配使用 LIKE
             """;
 
     private static final Pattern FORBIDDEN_SQL = Pattern.compile(
@@ -80,7 +80,7 @@ public class ProductQueryService {
     private String model;
 
     public ProductQueryService(@Qualifier("deepSeekRestClient") RestClient deepSeekRestClient,
-                               JdbcTemplate jdbcTemplate) {
+                               @Qualifier("mysqlJdbcTemplate") JdbcTemplate jdbcTemplate) {
         this.deepSeekRestClient = deepSeekRestClient;
         this.jdbcTemplate = jdbcTemplate;
     }

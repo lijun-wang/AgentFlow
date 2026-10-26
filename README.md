@@ -16,6 +16,38 @@ AgentFlow 是一个支持**文件上传与嵌入**的向量搜索服务，同时
 
 ---
 
+## 项目截图
+
+### 主页面概览
+
+![主页面](screenshots/01-main-overview.png)
+
+### 文档上传与向量搜索
+
+![文档上传](screenshots/02-document-upload.png)
+
+### 智能问答（RAG）
+
+![智能问答](screenshots/03-rag-chat.png)
+
+### 聊天机器人 2.0（DeepSeek）
+
+![聊天机器人](screenshots/04-chatbot-v2.png)
+
+### LangGraph 工作流
+
+![LangGraph](screenshots/05-langgraph-workflow.png)
+
+### 知识图谱查询
+
+![知识图谱](screenshots/06-knowledge-graph.png)
+
+### 商品查询（Text-to-SQL）
+
+![商品查询](screenshots/07-text-to-sql.png)
+
+---
+
 ## 技术栈
 
 | 技术 | 版本     | 说明 |

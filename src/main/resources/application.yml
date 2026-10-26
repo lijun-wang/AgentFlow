@@ -3,9 +3,10 @@ spring:
     name: agentflow
 
   datasource:
-    url: ${DB_URL}
+    # 主数据源：PostgreSQL（向量存储 / 知识图谱 / schema.sql）
+    url: jdbc:postgresql://192.168.199.128:5432/interview_guide
     username: postgres
-    password: ${DB_PASSWORD}
+    password: 123456
     driver-class-name: org.postgresql.Driver
 
   sql:
@@ -29,23 +30,31 @@ spring:
       exclude-on-http-codes: [401, 403, 404]  # 显式排除的 HTTP 状态码
       on-http-codes: [429, 500, 502, 503, 504]  # 触发重试的 HTTP 状态码（限流和瞬时服务端错误）
     openai:
-      api-key: ${OPENAI_API_KEY}
-      base-url: ${OPENAI_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode}
+      api-key:
+      base-url: https://dashscope.aliyuncs.com/compatible-mode
       embedding:
         options:
           model: text-embedding-v3
+
+# MySQL 数据源（Text-to-SQL 商品查询，MySQL 8.4.x）
+mysql:
+  datasource:
+    url: jdbc:mysql://192.168.199.128:3306/product?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: root
+    password: Root@123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
 
 # LangChain4j Embedding 配置（通义千问 OpenAI 兼容端点）
 langchain4j:
   embedding:
     base-url: ${LANGCHAIN4J_EMBEDDING_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
-    api-key: ${LANGCHAIN4J_EMBEDDING_API_KEY}
+    api-key: ${LANGCHAIN4J_EMBEDDING_API_KEY:}
     model: ${LANGCHAIN4J_EMBEDDING_MODEL:text-embedding-v3}
     max-retries: ${LANGCHAIN4J_EMBEDDING_MAX_RETRIES:2}  # LangChain4j 内部重试次数（不含首次调用）
 
 # DeepSeek Chat API 配置（用于智能问答总结、聊天机器人 2.0）
 deepseek:
-  api-key: ${DEEPSEEK_API_KEY}
+  api-key: ${DEEPSEEK_API_KEY:}
   base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
   model: ${DEEPSEEK_MODEL:deepseek-flash}
   max-retries: ${DEEPSEEK_MAX_RETRIES:2}  # LangChain4j ChatModel 内部重试次数（不含首次调用）
@@ -57,14 +66,14 @@ vector-search:
 
 # 向量存储后端开关：postgres（pgvector）或 milvus
 vector-store:
-  type: ${VECTOR_STORE_TYPE:milvus}   # postgres | milvus
+  type: ${VECTOR_STORE_TYPE:postgres}   # postgres | milvus
   milvus:
-    uri: ${MILVUS_URI:}
+    uri: ${MILVUS_URI:http://192.168.199.128:19530}
     token: ${MILVUS_TOKEN:}              # 可选，格式 username:password；为空则用 username/password
-    username: ${MILVUS_USERNAME:}
-    password: ${MILVUS_PASSWORD:}
-    database: ${MILVUS_DATABASE:}
-    dimension: ${MILVUS_DIMENSION:}
+    username: ${MILVUS_USERNAME:root}
+    password: ${MILVUS_PASSWORD:123456}
+    database: ${MILVUS_DATABASE:default}
+    dimension: ${MILVUS_DIMENSION:1024}
     # 与 Postgres 表名对应的 Collection
     collection-document-chunk: document_chunk
     collection-langchain4j: document_chunk_langchain4j

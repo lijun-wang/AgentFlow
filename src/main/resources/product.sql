@@ -1,50 +1,31 @@
--- Create product_sales table
+-- MySQL 8.4.x：商品销售明细表（Text-to-SQL）
 CREATE TABLE IF NOT EXISTS product_sales (
-    id BIGSERIAL PRIMARY KEY,                              -- 主键ID，自增
-    order_no VARCHAR(32) NOT NULL,                         -- 订单编号
-    product_id VARCHAR(16) NOT NULL,                       -- 商品编码
-    product_name VARCHAR(64) NOT NULL,                     -- 商品名称
-    category VARCHAR(32) NOT NULL,                         -- 商品类别
-    unit_price DECIMAL(10,2) NOT NULL,                     -- 商品单价(元)
-    quantity INTEGER NOT NULL,                             -- 购买数量
-    discount DECIMAL(3,2) NOT NULL DEFAULT 1.00,           -- 折扣率(1.00=无折扣)
-    total_amount DECIMAL(12,2) NOT NULL,                   -- 订单金额=单价*数量*折扣
-    customer_name VARCHAR(32) DEFAULT NULL,                -- 客户姓名
-    region VARCHAR(32) DEFAULT NULL,                       -- 销售区域
-    payment_method VARCHAR(16) DEFAULT NULL,               -- 支付方式
-    order_status VARCHAR(16) NOT NULL DEFAULT '待付款',     -- 订单状态
-    sale_date DATE NOT NULL,                               -- 销售日期
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,        -- 创建时间
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,        -- 更新时间
-    CONSTRAINT uk_product_sales_order_no UNIQUE (order_no)
-);
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID，自增',
+    order_no VARCHAR(32) NOT NULL COMMENT '订单编号',
+    product_id VARCHAR(16) NOT NULL COMMENT '商品编码',
+    product_name VARCHAR(64) NOT NULL COMMENT '商品名称',
+    category VARCHAR(32) NOT NULL COMMENT '商品类别',
+    unit_price DECIMAL(10,2) NOT NULL COMMENT '商品单价(元)',
+    quantity INTEGER NOT NULL COMMENT '购买数量',
+    discount DECIMAL(3,2) NOT NULL DEFAULT 1.00 COMMENT '折扣率(1.00=无折扣)',
+    total_amount DECIMAL(12,2) NOT NULL COMMENT '订单金额=单价*数量*折扣',
+    customer_name VARCHAR(32) DEFAULT NULL COMMENT '客户姓名',
+    region VARCHAR(32) DEFAULT NULL COMMENT '销售区域',
+    payment_method VARCHAR(16) DEFAULT NULL COMMENT '支付方式',
+    order_status VARCHAR(16) NOT NULL DEFAULT '待付款' COMMENT '订单状态',
+    sale_date DATE NOT NULL COMMENT '销售日期',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_product_sales_order_no (order_no),
+    KEY idx_product_sales_product_id (product_id),
+    KEY idx_product_sales_category (category),
+    KEY idx_product_sales_sale_date (sale_date),
+    KEY idx_product_sales_region (region)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='商品销售明细表';
 
--- 字段描述
-COMMENT ON TABLE product_sales IS '商品销售明细表';
-COMMENT ON COLUMN product_sales.id IS '主键ID，自增';
-COMMENT ON COLUMN product_sales.order_no IS '订单编号';
-COMMENT ON COLUMN product_sales.product_id IS '商品编码';
-COMMENT ON COLUMN product_sales.product_name IS '商品名称';
-COMMENT ON COLUMN product_sales.category IS '商品类别';
-COMMENT ON COLUMN product_sales.unit_price IS '商品单价(元)';
-COMMENT ON COLUMN product_sales.quantity IS '购买数量';
-COMMENT ON COLUMN product_sales.discount IS '折扣率(1.00=无折扣)';
-COMMENT ON COLUMN product_sales.total_amount IS '订单金额=单价*数量*折扣';
-COMMENT ON COLUMN product_sales.customer_name IS '客户姓名';
-COMMENT ON COLUMN product_sales.region IS '销售区域';
-COMMENT ON COLUMN product_sales.payment_method IS '支付方式';
-COMMENT ON COLUMN product_sales.order_status IS '订单状态';
-COMMENT ON COLUMN product_sales.sale_date IS '销售日期';
-COMMENT ON COLUMN product_sales.created_at IS '创建时间';
-COMMENT ON COLUMN product_sales.updated_at IS '更新时间';
-
-CREATE INDEX IF NOT EXISTS idx_product_sales_product_id ON product_sales (product_id);
-CREATE INDEX IF NOT EXISTS idx_product_sales_category ON product_sales (category);
-CREATE INDEX IF NOT EXISTS idx_product_sales_sale_date ON product_sales (sale_date);
-CREATE INDEX IF NOT EXISTS idx_product_sales_region ON product_sales (region);
-
--- 测试数据：100 条（商品字典：P01~P12）
-INSERT INTO product_sales
+-- 测试数据：100 条（商品字典：P01~P12）；重复执行时按订单号忽略
+INSERT IGNORE INTO product_sales
 (order_no, product_id, product_name, category, unit_price, quantity, discount, total_amount, customer_name, region, payment_method, order_status, sale_date)
 VALUES
     ('SO20240501001','P01','iPhone 15 Pro','手机数码',7999.00,2,1.00,15998.00,'张伟','北京','微信支付','已完成','2024-05-01'),
@@ -146,5 +127,4 @@ VALUES
     ('SO20240501097','P06','李宁速干运动裤','运动户外',199.00,4,1.00,796.00,'赵磊','武汉','微信支付','已完成','2024-05-17'),
     ('SO20240501098','P11','联想ThinkPad X1','电脑办公',9999.00,1,0.85,8499.15,'孙悦','南京','银行卡','已发货','2024-05-17'),
     ('SO20240501099','P02','华为Mate 60 Pro','手机数码',6499.00,1,1.00,6499.00,'周涛','西安','信用卡','已完成','2024-05-17'),
-    ('SO20240501100','P12','戴森吹风机HD15','家用电器',2990.00,1,1.00,2990.00,'吴敏','重庆','支付宝','已完成','2024-05-17')
-ON CONFLICT (order_no) DO NOTHING;
+    ('SO20240501100','P12','戴森吹风机HD15','家用电器',2990.00,1,1.00,2990.00,'吴敏','重庆','支付宝','已完成','2024-05-17');

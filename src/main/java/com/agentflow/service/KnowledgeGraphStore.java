@@ -4,6 +4,7 @@ import com.agentflow.model.KgEntity;
 import com.agentflow.model.KgRelation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -25,7 +26,7 @@ public class KnowledgeGraphStore {
 
     private final JdbcTemplate jdbcTemplate;
 
-    public KnowledgeGraphStore(JdbcTemplate jdbcTemplate) {
+    public KnowledgeGraphStore(@Qualifier("postgresJdbcTemplate") JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 

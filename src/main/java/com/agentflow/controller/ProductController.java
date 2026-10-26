@@ -18,7 +18,7 @@ import java.util.Map;
 @Tag(name = "商品查询", description = "自然语言商品销售查询（Text-to-SQL）")
 @RestController
 @RequestMapping("/api/product")
-@ConditionalOnProperty(name = "database.available", havingValue = "true")
+@ConditionalOnProperty(name = "mysql.available", havingValue = "true")
 public class ProductController {
 
     private static final Logger log = LoggerFactory.getLogger(ProductController.class);

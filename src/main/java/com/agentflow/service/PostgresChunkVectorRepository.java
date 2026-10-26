@@ -8,6 +8,7 @@ import java.util.StringJoiner;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -38,7 +39,7 @@ public class PostgresChunkVectorRepository implements ChunkVectorRepository {
     @Value("${vector-search.similarity-threshold:0.7}")
     private double similarityThreshold;
 
-    public PostgresChunkVectorRepository(JdbcTemplate jdbcTemplate) {
+    public PostgresChunkVectorRepository(@Qualifier("postgresJdbcTemplate") JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 
